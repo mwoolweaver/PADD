@@ -1040,10 +1040,9 @@ PrintLogo() {
     printf "%s${clear_line}\n${clear_line}\n" "${padd_logo_3}PADD ${padd_version_heatmap}${padd_version}${reset_text}   ${full_status}${reset_text}"
   # normal or not defined
   else
-    printf "%s${clear_line}\n" "${padd_logo_retro_1}"
-    printf "%s${clear_line}\n" "${padd_logo_retro_2}   ${version_info}, PADD ${padd_version_heatmap}${padd_version}${reset_text}"
-    printf "%s${clear_line}\n${clear_line}\n" "${padd_logo_retro_3}   ${dns_check_box} DNS   ${ftl_check_box} FTL   ${mega_status}${reset_text}"
-  fi
+    moveXOffset; printf "%b" "${padd_logo_retro_1}\n"
+    moveXOffset; printf "%b" "${padd_logo_retro_2}Pi-hole® Ad Detection Display\n"
+    moveXOffset; printf "%b" "${padd_logo_retro_3}A client for Pi-hole\n\n"
 }
 
 PrintDashboard() {
