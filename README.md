@@ -2,7 +2,7 @@
 
 PADD (formerly Chronometer2) is a more expansive version of the original chronometer.sh that was included with [Pi-Hole](https://pi-hole.net). PADD provides in-depth information about your Pi-hole.
 
-![PADD Screenshot](https://github.com/mwoolweaver/graphics/blob/cafd6ba5c8bb34e4add527cc2da02c8b494aa745/Screenshots/padd.png)
+![PADD Screenshot](https://github.com/mwoolweaver/graphics/blob/3abe8c741a3b1226ee034038bc59ca8b6e085017/Screenshots/padd.png)
 
 ***Note:** PADD has been adopted by the Pi-hole team, thanks to JPMCK for creating this helpful tool!
 
@@ -180,4 +180,4 @@ If you want to change how PADD displays through a terminal emulator (PuTTY, Term
 
 ### The Sizes
 
-![PADD Sizes GIF](https://github.com/mwoolweaver/graphics/blob/cafd6ba5c8bb34e4add527cc2da02c8b494aa745/PADD/PADDsizes.gif)
+![PADD Sizes GIF](https://github.com/mwoolweaver/graphics/blob/3abe8c741a3b1226ee034038bc59ca8b6e085017/PADD/PADDsizes.gif)
