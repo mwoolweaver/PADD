@@ -385,7 +385,19 @@ GetPADDData() {
 }
 
 GetPADDValue() {
-    echo "${padd_data}" | sed -n "s/^$1=//p" 2>/dev/null
+    # Define a literal newline for precise key boundary matching
+    local nl='
+'
+    # Wrap padd_data in newlines to ensure exact, line-anchored key lookups
+    case "${nl}${padd_data}${nl}" in
+        *"${nl}$1="*)
+            local val="${nl}${padd_data}${nl}"
+            # Strip everything up to and including the target key and equals sign
+            val="${val#*"${nl}$1="}"
+            # Print only the value up to the next newline
+            printf '%s\n' "${val%%"${nl}"*}"
+            ;;
+    esac
 }
 
 GetSummaryInformation() {
@@ -530,9 +542,9 @@ GetSystemInformation() {
 
     # CPU, load, heatmap
     core_count=$(GetPADDValue system.cpu.nprocs)
-    cpu_load_1=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.[0])")
-    cpu_load_5=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.[1])")
-    cpu_load_15=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.[2])")
+    cpu_load_1=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.0)")
+    cpu_load_5=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.1)")
+    cpu_load_15=$(printf %.2f "$(GetPADDValue system.cpu.load.raw.2)")
     cpu_load_1_heatmap=$(HeatmapGenerator "${cpu_load_1}" "${core_count}")
     cpu_load_5_heatmap=$(HeatmapGenerator "${cpu_load_5}" "${core_count}")
     cpu_load_15_heatmap=$(HeatmapGenerator "${cpu_load_15}" "${core_count}")
