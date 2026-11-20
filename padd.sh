@@ -313,6 +313,7 @@ LoginAPI() {
 }
 
 DeleteSession() {
+    local deleteResponse
     # if a valid Session exists (no password required or successful authentication) and
     # SID is non-empty and not "null" (successful authentication only), delete the session
     if [ "${validSession}" = true ] && [ -n "${SID}" ] && [ "${SID}" != "null" ]; then
@@ -338,7 +339,7 @@ EOF
 }
 
 Authenticate() {
-    local auth_parsed nl
+    local auth_parsed nl sessionResponse
     startup_error=""
 
     # JSON-encode the password via stdin (printf is a shell builtin, so the password
@@ -982,7 +983,8 @@ CompareMasterVersion() {
 }
 
 GetVersionInformation() {
-    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION CORE_VERSION_raw FTL_VERSION_raw
+    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION
+    local WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION CORE_VERSION_raw FTL_VERSION_raw GITHUB_DOCKER_VERSION
     if [ "${connection_down_flag}" = true ]; then
         DOCKER_VERSION=null
         CORE_VERSION="N/A"
@@ -1317,6 +1319,7 @@ PrintLogo() {
 }
 
 PrintDashboard() {
+    local version_info
     if [ "${DOCKER_VERSION}" != "null" ]; then
         version_info="Docker ${docker_version_heatmap}${DOCKER_VERSION}${reset_text}"
     else
@@ -1843,7 +1846,7 @@ ShowVersion() {
 }
 
 StartupRoutine(){
-
+    local i
     if [ "$1" = "ants" ]; then
         # If the screen is too small from the beginning, exit
         printf "%b" "${check_box_bad} Error!\n    PADD isn't\n    for ants!\n"
@@ -1992,7 +1995,7 @@ StartupRoutine(){
 }
 
 NormalPADD() {
-
+    local now get_network_information_required
     # Trap the window resize signal (handle window resize events)
     trap 'TerminalResize' WINCH
 
@@ -2145,6 +2148,7 @@ EOM
 
 # Called on signals INT QUIT TERM
 sig_cleanup() {
+    local err
     # save error code (130 for SIGINT, 143 for SIGTERM, 131 for SIGQUIT)
     err=$?
 
