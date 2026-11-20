@@ -486,6 +486,7 @@ GetSummaryInformation() {
         top_domain_raw="N/A"
         top_client_raw="N/A"
         dns_queries_frequency="N/A"
+        dns_query_rate_label="Qrs/min:"
         return
     fi
 
@@ -528,7 +529,12 @@ GetSummaryInformation() {
     dns_queries_today=$(printf "%.f" "${dns_queries_today_raw}")
     ads_blocked_today=$(printf "%.f" "${ads_blocked_today_raw}")
     ads_percentage_today=$(printf "%.1f" "${ads_percentage_today_raw}")
-    dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN { printf "%.f\n", f * 60 }')
+    if [ "${dns_queries_frequency}" -gt 75 ]; then
+        dns_query_rate_label="Qrs/sec:"
+        dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN { printf "%.1f\n", f }')
+    else
+        dns_query_rate_label="Qrs/min:"
+    fi
 
     # Substitute values returned by FTL for privacy level >= 1 / >= 2
     if [ "${privacy_level}" -ge 1 ]; then
