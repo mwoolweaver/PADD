@@ -417,14 +417,45 @@ EOF
 ############################################# GETTERS ##############################################
 
 GetLatestDomain() {
-    local json_out latest_dmn
+    local latest_dmn priv
 
-    # Adjust endpoint/auth helper to match your GetFTLData / API_URL pattern
-    json_out=$(curl -sS -m 2 -H "Accept: application/json" -H "sid: ${SID}" "${API_URL}queries?length=1" 2>/dev/null) || return 0
-    latest_dmn=$(printf '%s\n' "${json_out}" | jq -r '.queries[0].domain // empty' 2>/dev/null)
+    if [ "${connection_down_flag}" = true ]; then
+        latest_domain="N/A"
+        return 0
+    fi
+
+    priv="${privacy_level}"
+    if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
+        GetPADDValue config.privacy_level priv
+        if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
+            priv=0
+        fi
+    fi
+
+    if [ "${priv}" -ge 1 ]; then
+        latest_domain="hidden by privacy level"
+        return 0
+    fi
+
+    GetFTLData "queries" "?length=1"
+    case "${ftl_result}" in
+        ''|'000'|'401')
+            if [ -z "${latest_domain}" ]; then
+                latest_domain="N/A"
+            fi
+            return 0
+            ;;
+    esac
+
+    latest_dmn=$(jq -r '.queries[0].domain // empty' 2>/dev/null <<EOF
+${ftl_result}
+EOF
+)
 
     if [ -n "${latest_dmn}" ]; then
         latest_domain="${latest_dmn}"
+    elif [ -z "${latest_domain}" ]; then
+        latest_domain="N/A"
     fi
 }
 
