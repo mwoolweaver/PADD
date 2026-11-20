@@ -258,11 +258,14 @@ LoginAPI() {
         return
     fi
 
-    # Check if we are running locally before checking for the CLI password
+    # Check if we are running locally before checking for the CLI password,
+    # and only use cli_pw when --secret was not already supplied.
     if [ -z "${password}" ]; then
         if [ -z "${SERVER}" ] || [ "${SERVER}" = "localhost" ] || [ "${SERVER}" = "127.0.0.1" ]; then
+            # Try to read the CLI password (if enabled and readable by the current user)
             if [ -r /etc/pihole/cli_pw ]; then
                 read -r password < /etc/pihole/cli_pw
+                # If we can read the CLI password, we can skip 2FA even when it's required otherwise
                 needTOTP=false
             fi
         fi
