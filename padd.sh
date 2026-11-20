@@ -191,15 +191,14 @@ TestAPIAvailability() {
             esac
         fi
 
-        # Test if the API is available at this URL, include delimiter for ease in splitting payload
-        authResponse=$(curl --connect-timeout 2 --max-time 10 -skS -w ">>%{http_code}" "${API_URL}auth")
+        # Append an explicit sentinel before %{http_code} instead of a plain delimiter
+        # like ">>" so response bodies containing ">>" cannot corrupt status parsing.
+        authResponse=$(curl --connect-timeout 2 --max-time 10 -skS -w "__PADD_HTTP_CODE__:%{http_code}" "${API_URL}auth")
 
-        # authStatus is the response http_code, eg. 200, 401.
-        # Shell parameter expansion, remove everything up to and including the >> delim
-        authStatus=${authResponse#*>>}
-        # data is everything from response
-        # Shell parameter expansion, remove the >> delim and everything after
-        authData=${authResponse%>>*}
+        # Extract the trailing HTTP status code and leading payload in-process
+        # using greedy/non-greedy POSIX parameter expansion (zero subshells/forks).
+        authStatus=${authResponse##*__PADD_HTTP_CODE__:}
+        authData=${authResponse%__PADD_HTTP_CODE__:*}
 
         # Test if http status code was 200 (OK) or 401 (authentication required)
         if [ "${authStatus}" = 200 ]; then
@@ -388,19 +387,18 @@ GetFTLData() {
 
     # get the data from querying the API as well as the http status code, include delimiter for ease in splitting payload
     # SID is passed via stdin config (-K -) to prevent leakage via process information
-    response=$(curl --connect-timeout 2 --max-time 10 -sk -w ">>%{http_code}" -X GET "${API_URL}$1$2" \
+    # Use a distinct sentinel token before %{http_code} so API JSON payloads
+    # containing ">>" do not interfere with splitting body and status code.
+    response=$(curl --connect-timeout 2 --max-time 10 -sk -w "__PADD_HTTP_CODE__:%{http_code}" -X GET "${API_URL}$1$2" \
         -H "Accept: application/json" \
         -K - <<EOF
 header = "sid: ${SID}"
 EOF
 )
 
-    # status is the response http_code, eg. 200, 401.
-    # Shell parameter expansion, remove everything up to and including the >> delim
-    status=${response#*>>}
-    # data is everything from response
-    # Shell parameter expansion, remove the >> delim and everything after
-    data=${response%>>*}
+    # Split status and JSON body via POSIX parameter expansion without extra forks.
+    status=${response##*__PADD_HTTP_CODE__:}
+    data=${response%__PADD_HTTP_CODE__:*}
 
     ftl_result=""
     if [ "${status}" = 200 ]; then
@@ -2374,8 +2372,27 @@ NormalPADD() {
   done
 }
 
+# Single-quotes $1 for safe inclusion in an eval command string (no subshells/forks)
+QuoteShellArg() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _rem="$1" _quoted="" _sq="'" _q="'\\''"
+    while :; do
+        case "${_rem}" in
+            *"${_sq}"*)
+                _quoted="${_quoted}${_rem%%"${_sq}"*}${_q}"
+                _rem="${_rem#*"${_sq}"}"
+                ;;
+            *)
+                _quoted="${_quoted}${_rem}"
+                break
+                ;;
+        esac
+    done
+    eval "$2=\"'\${_quoted}'\""
+}
+
 Update() {
-    local padd_script_path repo_dir target_script
+    local padd_script_path repo_dir target_script quoted_script
 
     if ! command -v git >/dev/null 2>&1; then
         echo "${check_box_bad} 'git' is required for --update on this fork."
@@ -2408,11 +2425,12 @@ Update() {
 
     echo "${check_box_good} Repository updated and verified. Restarting PADD..."
     xOffset=0
+    QuoteShellArg "${target_script}" quoted_script
     if [ -x "${target_script}" ]; then
-        eval "exec \"${target_script}\"${restart_args}"
+        eval "exec ${quoted_script}${restart_args}"
     fi
     if command -v sh >/dev/null 2>&1; then
-        eval "exec sh \"${target_script}\"${restart_args}"
+        eval "exec sh ${quoted_script}${restart_args}"
     fi
 
     echo "${check_box_bad} Could not automatically restart PADD. Please run ${target_script} manually."
