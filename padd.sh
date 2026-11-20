@@ -1579,9 +1579,9 @@ PrintDashboard() {
         moveXOffset; printf " %-26s%-24s%-6s${dhcp_heatmap}%-10s${reset_text}${clear_line}\n" "Servers: ${dns_information}" "Port: ${dns_port_display}" "DHCP:" "${dhcp_status}"
         moveXOffset; printf " %-8s${dnssec_heatmap}%-18s${reset_text}%-24s%-10s${dhcp_ipv6_heatmap}%-6s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain: ${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
         moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-16s${reset_text}%-24s%-7s${dhcp_range_heatmap}%-21s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Privacy: ${privacy_level_display}" "Range:" "${dhcp_range}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
-        moveXOffset; printf " %-10s%-39s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
+moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
+        moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
+        moveXOffset; printf " %-10s%-39s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_percent_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
     else # $1 = "ultra"
          # mega is a screen with at least 80 columns and 26 lines
@@ -1607,9 +1607,9 @@ PrintDashboard() {
         moveXOffset; printf " %-26s%-24s%-6s${dhcp_heatmap}%-10s${reset_text}${clear_line}\n" "Servers: ${dns_information}" "Port: ${dns_port_display}" "DHCP:" "${dhcp_status}"
         moveXOffset; printf " %-8s${dnssec_heatmap}%-18s${reset_text}%-24s%-10s${dhcp_ipv6_heatmap}%-6s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain: ${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
         moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-16s${reset_text}%-24s%-7s${dhcp_range_heatmap}%-21s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Privacy: ${privacy_level_display}" "Range:" "${dhcp_range}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
-        moveXOffset; printf " %-10s%-39s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
+moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
+        moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
+        moveXOffset; printf " %-10s%-39s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_percent_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
     fi
 
