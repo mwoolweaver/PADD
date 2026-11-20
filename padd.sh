@@ -1376,6 +1376,8 @@ EOF
 }
 
 GenerateSizeDependentOutput() {
+    local ads_width trunc_width trunc_full cpu_width mem_width swap_width sys_width temp_base
+
     latest_blocked=""
     top_blocked=""
     top_domain=""
@@ -1384,112 +1386,61 @@ GenerateSizeDependentOutput() {
 
     [ "$1" = "ants" ] && return
 
-    if [ "$1" = "pico" ] || [ "$1" = "nano" ]; then
-        BarGenerator "${ads_percentage_today}" 9 "color"
+    # Layout parameters per size. An empty width skips that step.
+    trunc_full=true
+    cpu_width=10
+    mem_width=10
+    case "$1" in
+        pico|nano)    ads_width=9 ;;
+        micro)        ads_width=10 ;;
+        mini)         ads_width=20; trunc_width=29; trunc_full=false; cpu_width=20; mem_width=20 ;;
+        tiny)         ads_width=30; trunc_width=41; cpu_width=7; mem_width=7 ;;
+        regular|slim) ads_width=40; trunc_width=48; temp_base=20 ;;
+        mega)         ads_width=30; trunc_width=68; sys_width=20; swap_width=10; temp_base=9 ;;
+        ultra)        ads_width=40; trunc_width=88; sys_width=22; cpu_width=15; mem_width=15; swap_width=15; temp_base=22 ;;
+    esac
+
+    if [ -n "${ads_width}" ]; then
+        BarGenerator "${ads_percentage_today}" "${ads_width}" "color"
         ads_blocked_bar=${bar_out}
+    fi
 
-    elif [ "$1" = "micro" ]; then
-        BarGenerator "${ads_percentage_today}" 10 "color"
-        ads_blocked_bar=${bar_out}
-
-    elif [ "$1" = "mini" ]; then
-        BarGenerator "${ads_percentage_today}" 20 "color"
-        ads_blocked_bar=${bar_out}
-
-        truncateString "${latest_blocked_raw}" 29 latest_blocked
-        truncateString "${top_blocked_raw}" 29 top_blocked
-
-    elif [ "$1" = "tiny" ]; then
-        BarGenerator "${ads_percentage_today}" 30 "color"
-        ads_blocked_bar=${bar_out}
-
-        truncateString "${latest_blocked_raw}" 41 latest_blocked
-        truncateString "${top_blocked_raw}" 41 top_blocked
-        truncateString "${top_domain_raw}" 41 top_domain
-        truncateString "${top_client_raw}" 41 top_client
-
-    elif [ "$1" = "regular" ] || [ "$1" = "slim" ]; then
-        BarGenerator "${ads_percentage_today}" 40 "color"
-        ads_blocked_bar=${bar_out}
-
-        truncateString "${latest_blocked_raw}" 48 latest_blocked
-        truncateString "${top_blocked_raw}" 48 top_blocked
-        truncateString "${top_domain_raw}" 48 top_domain
-        truncateString "${top_client_raw}" 48 top_client
-
-        if [ "${temp_unicode}" = true ]; then
-            temp_padding=21
-        else
-            temp_padding=20
+    if [ -n "${trunc_width}" ]; then
+        truncateString "${latest_blocked_raw}" "${trunc_width}" latest_blocked
+        truncateString "${top_blocked_raw}" "${trunc_width}" top_blocked
+        if [ "${trunc_full}" = true ]; then
+            truncateString "${top_domain_raw}" "${trunc_width}" top_domain
+            truncateString "${top_client_raw}" "${trunc_width}" top_client
         fi
+    fi
 
-    elif [ "$1" = "mega" ]; then
-        BarGenerator "${ads_percentage_today}" 30 "color"
-        ads_blocked_bar=${bar_out}
+    if [ -n "${sys_width}" ]; then
+        truncateString "${sys_model}" "${sys_width}" sys_model_short
+    fi
 
-        truncateString "${latest_blocked_raw}" 68 latest_blocked
-        truncateString "${top_blocked_raw}" 68 top_blocked
-        truncateString "${top_domain_raw}" 68 top_domain
-        truncateString "${top_client_raw}" 68 top_client
-        truncateString "${sys_model}" 20 sys_model_short
-
+    if [ -n "${temp_base}" ]; then
         if [ "${temp_unicode}" = true ]; then
-            temp_padding=10
+            temp_padding=$((temp_base + 1))
         else
-            temp_padding=9
-        fi
-
-    elif [ "$1" = "ultra" ]; then
-        BarGenerator "${ads_percentage_today}" 40 "color"
-        ads_blocked_bar=${bar_out}
-
-        truncateString "${latest_blocked_raw}" 88 latest_blocked
-        truncateString "${top_blocked_raw}" 88 top_blocked
-        truncateString "${top_domain_raw}" 88 top_domain
-        truncateString "${top_client_raw}" 88 top_client
-        truncateString "${sys_model}" 22 sys_model_short
-
-        if [ "${temp_unicode}" = true ]; then
-            temp_padding=23
-        else
-            temp_padding=22
+            temp_padding=${temp_base}
         fi
     fi
 
     # System uptime
     convertUptime "${system_uptime_raw:-0}"
     system_uptime="${uptime_out}"
-    if [ "$1" = "pico" ] || [ "$1" = "nano" ] || [ "$1" = "micro" ]; then
-        system_uptime="${system_uptime%,*}"
-    fi
+    case "$1" in
+        pico|nano|micro) system_uptime="${system_uptime%,*}" ;;
+    esac
 
-    # Bar generations
-    if [ "$1" = "mini" ]; then
-        BarGenerator "${cpu_percent}" 20
-        cpu_bar=${bar_out}
-        BarGenerator "${memory_percent}" 20
-        memory_bar=${bar_out}
-    elif [ "$1" = "tiny" ]; then
-        BarGenerator "${cpu_percent}" 7
-        cpu_bar=${bar_out}
-        BarGenerator "${memory_percent}" 7
-        memory_bar=${bar_out}
-    elif [ "$1" = "ultra" ]; then
-        BarGenerator "${cpu_percent}" 15
-        cpu_bar=${bar_out}
-        BarGenerator "${memory_percent}" 15
-        memory_bar=${bar_out}
-        BarGenerator "${swap_percent}" 15
+    # Bars
+    BarGenerator "${cpu_percent}" "${cpu_width}"
+    cpu_bar=${bar_out}
+    BarGenerator "${memory_percent}" "${mem_width}"
+    memory_bar=${bar_out}
+    if [ -n "${swap_width}" ]; then
+        BarGenerator "${swap_percent}" "${swap_width}"
         swap_bar=${bar_out}
-    else
-        BarGenerator "${cpu_percent}" 10
-        cpu_bar=${bar_out}
-        BarGenerator "${memory_percent}" 10
-        memory_bar=${bar_out}
-        if [ "$1" = "mega" ]; then
-            BarGenerator "${swap_percent}" 10
-            swap_bar=${bar_out}
-        fi
     fi
 }
 
