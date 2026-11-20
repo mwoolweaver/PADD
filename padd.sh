@@ -1210,7 +1210,7 @@ GenerateSizeDependentOutput() {
     fi
 
     # System uptime
-    convertUptime "${system_uptime_raw}"
+    convertUptime "${system_uptime_raw:-0}"
     system_uptime="${uptime_out}"
     if [ "$1" = "pico" ] || [ "$1" = "nano" ] || [ "$1" = "micro" ]; then
         system_uptime="${system_uptime%,*}"
