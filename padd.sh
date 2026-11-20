@@ -2183,7 +2183,7 @@ CleanExit() {
 
     #  Delete session from FTL server
     DeleteSession
-    exit ${err} # exit the script with saved $?
+    exit "${err}" # exit the script with saved $?
 }
 
 TerminalResize(){
