@@ -2411,22 +2411,22 @@ NormalPADD() {
 # or external forks, assigning the quoted result to variable name $2.
 QuoteShellArg() {
     case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
-    local _rem="$1" _quoted="" _sq="'" _q="'\\''"
+    local _qrem="$1" _qbuf="" _sq="'" _q="'\\''"
     while :; do
-        case "${_rem}" in
+        case "${_qrem}" in
             *"${_sq}"*)
                 # Append text before the next single quote, then emit an escaped quote
-                _quoted="${_quoted}${_rem%%"${_sq}"*}${_q}"
-                _rem="${_rem#*"${_sq}"}"
+                _qbuf="${_qbuf}${_qrem%%"${_sq}"*}${_q}"
+                _qrem="${_qrem#*"${_sq}"}"
                 ;;
             *)
                 # Append the remaining tail and finish
-                _quoted="${_quoted}${_rem}"
+                _qbuf="${_qbuf}${_qrem}"
                 break
                 ;;
         esac
     done
-    eval "$2=\"'\${_quoted}'\""
+    eval "$2=\"'\${_qbuf}'\""
 }
 
 Update() {
