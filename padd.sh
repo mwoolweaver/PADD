@@ -1203,6 +1203,8 @@ GenerateSizeDependentOutput() {
     top_blocked=""
     top_domain=""
     top_client=""
+    sys_model_short=""
+    
 
     if [ "$1" = "pico" ] || [ "$1" = "nano" ]; then
         BarGenerator "${ads_percentage_today}" 9 "color"
