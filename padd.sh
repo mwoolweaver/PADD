@@ -2156,7 +2156,7 @@ sig_cleanup() {
     # causing EXIT trap to be executed, so we trap EXIT after INT
     trap '' EXIT
 
-    (exit ${err}) # execute in a subshell just to pass $? to CleanExit()
+    (exit "${err}") # execute in a subshell just to pass $? to CleanExit()
     CleanExit
 }
 
