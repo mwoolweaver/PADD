@@ -542,7 +542,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw
+    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
@@ -620,15 +620,20 @@ GetSystemInformation() {
     fi
 
     # CPU temperature heatmap
+    GetPADDValue sensors.hot_limit hot_limit
+    hot_limit="${hot_limit%%.*}"
+    case "${hot_limit}" in
+        ''|*[!0-9]*) hot_limit=80 ;;
+    esac
+
     hot_flag=false
-    # If we're getting close to 85°C... (https://www.raspberrypi.org/blog/introducing-turbo-mode-up-to-50-more-performance-for-free/)
-    if [ "${cpu_temp_celsius}" -gt 80 ]; then
+    if [ "${cpu_temp_celsius}" -gt "${hot_limit}" ]; then
         temp_heatmap=${blinking_text}${red_text}
         # set flag to change the status message in SetStatusMessage()
         hot_flag=true
-    elif [ "${cpu_temp_celsius}" -gt 70 ]; then
+    elif [ "${cpu_temp_celsius}" -gt $((hot_limit - 10)) ]; then
         temp_heatmap=${magenta_text}
-    elif [ "${cpu_temp_celsius}" -gt 60 ]; then
+    elif [ "${cpu_temp_celsius}" -gt $((hot_limit - 20)) ]; then
         temp_heatmap=${blue_text}
     elif [ "${cpu_temp_celsius}" -gt -274 ]; then
         temp_heatmap=${cyan_text}
