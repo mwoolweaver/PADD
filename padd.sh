@@ -646,7 +646,10 @@ GetSystemInformation() {
     GetPADDValue system.cpu.load.raw.0 cpu_load_1_raw
     GetPADDValue system.cpu.load.raw.1 cpu_load_5_raw
     GetPADDValue system.cpu.load.raw.2 cpu_load_15_raw
-    GetPADDValue system.cpu.load.percent.0 cpu_percent_raw
+    GetPADDValue system.cpu.%cpu cpu_percent_raw
+    if [ -z "${cpu_percent_raw}" ] || [ "${cpu_percent_raw}" = "null" ]; then
+        GetPADDValue system.cpu.load.percent.0 cpu_percent_raw
+    fi
 
     if [ -z "${core_count}" ] || [ "${core_count}" = "null" ]; then core_count=0; fi
     if [ -z "${cpu_load_1_raw}" ] || [ "${cpu_load_1_raw}" = "null" ]; then cpu_load_1_raw=0; fi
@@ -664,6 +667,8 @@ GetSystemInformation() {
     HeatmapGenerator "${cpu_load_15}" "${core_count}"
     cpu_load_15_heatmap=${heat_out}
     cpu_percent=$(printf %.1f "${cpu_percent_raw}")
+    HeatmapGenerator "${cpu_percent}"
+    cpu_percent_heatmap=${heat_out}
 
     # Memory use and heatmap (bar is generated in GenerateSizeDependentOutput)
     GetPADDValue system.memory.ram.%used memory_percent_raw
@@ -1357,7 +1362,7 @@ PrintDashboard() {
         moveXOffset; printf "%s${clear_line}\n" " IP:  ${pi_ip4_addr}"
         moveXOffset; printf "%s${clear_line}\n" " IPv6 ${ipv6_check_box} DHCP ${dhcp_check_box}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}CPU ================${reset_text}"
-        moveXOffset; printf "%s${clear_line}" " [${cpu_load_1_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
+        moveXOffset; printf "%s${clear_line}" " [${cpu_percent_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
     elif [ "$1" = "nano" ]; then
         # nano is a screen at least 24x12 (columns x lines)
         moveXOffset; printf "%s${clear_line}\n" "n${padd_text} ${mini_status}"
@@ -1371,7 +1376,7 @@ PrintDashboard() {
         moveXOffset; printf "%s${clear_line}\n" " IPv6: ${ipv6_check_box}    DHCP: ${dhcp_check_box}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =================${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" " Up:  ${system_uptime}"
-        moveXOffset; printf "%s${clear_line}"  " CPU: [${cpu_load_1_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
+        moveXOffset; printf "%s${clear_line}"  " CPU: [${cpu_percent_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
     elif [ "$1" = "micro" ]; then
         # micro is a screen at least 30x16 (columns x lines)
         moveXOffset; printf "%s${clear_line}\n" "µ${padd_text}     ${mini_status}"
@@ -1388,7 +1393,7 @@ PrintDashboard() {
         moveXOffset; printf "%s${clear_line}\n" " IPv6: ${ipv6_check_box}       DHCP:  ${dhcp_check_box}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =======================${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" " Uptime:  ${system_uptime}"
-        moveXOffset; printf "%s${clear_line}\n" " Load:    [${cpu_load_1_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
+        moveXOffset; printf "%s${clear_line}\n" " Load:    [${cpu_percent_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
         moveXOffset; printf "%s${clear_line}" " Memory:  [${memory_heatmap}${memory_bar}${reset_text}] ${memory_percent}%"
     elif [ "$1" = "mini" ]; then
         # mini is a screen at least 40x18 (columns x lines)
@@ -1409,7 +1414,7 @@ PrintDashboard() {
         moveXOffset; printf " %-9s%-4s%-12s%-4s%-5s${clear_line}\n" "Traffic:" "TX:" "${tx_bytes}" "RX:" "${rx_bytes}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =================================${reset_text}"
         moveXOffset; printf " %-9s%-29s${clear_line}\n" "Uptime:" "${system_uptime}"
-        moveXOffset; printf "%s${clear_line}\n" " Load:    [${cpu_load_1_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
+        moveXOffset; printf "%s${clear_line}\n" " Load:    [${cpu_percent_heatmap}${cpu_bar}${reset_text}] ${cpu_percent}%"
         moveXOffset; printf "%s${clear_line}" " Memory:  [${memory_heatmap}${memory_bar}${reset_text}] ${memory_percent}%"
     elif [ "$1" = "tiny" ]; then
          # tiny is a screen at least 53x20 (columns x lines)
@@ -1462,8 +1467,8 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-16s%-6s${dhcp_range_heatmap}%-36s${reset_text}${clear_line}\n" "DHCP:" "${dhcp_check_box}" "Range" "${dhcp_range}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =====================================================${reset_text}"
         moveXOffset; printf " %-10s%-39s${clear_line}\n" "Uptime:" "${system_uptime}"
-        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text}%-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-4s${reset_text}${clear_line}\n" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}"
-        moveXOffset; printf " %-10s[${memory_heatmap}%-10s${reset_text}] %-6s %-10s[${cpu_load_1_heatmap}%-10s${reset_text}] %-5s${clear_line}" "Memory:" "${memory_bar}" "${memory_percent}%" "CPU Load:" "${cpu_bar}" "${cpu_percent}%"
+        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text}%-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-4s${reset_text}${clear_line}\n" "CPU Temp:" "${temperature}" "CPU Use:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}"
+        moveXOffset; printf " %-10s[${memory_heatmap}%-10s${reset_text}] %-6s %-10s[${cpu_load_1_heatmap}%-10s${reset_text}] %-5s${clear_line}" "Memory:" "${memory_bar}" "${memory_percent}%" "CPU Use:" "${cpu_bar}" "${cpu_percent}%"
     else # $1 = "mega"
          # mega is a screen with at least 80 columns and 26 lines
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_1}"
@@ -1491,7 +1496,7 @@ PrintDashboard() {
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
         moveXOffset; printf " %-10s%-39s${clear_line}\n" "Device:" "${sys_model}"
         moveXOffset; printf " %-10s%-39s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Memory:" "${memory_bar}" "${memory_percent}%"
-        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_load_1_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU Load:" "${cpu_bar}" "${cpu_percent}%"
+        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_load_1_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Use:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU Use:" "${cpu_bar}" "${cpu_percent}%"
     fi
 
     # Clear to end of screen (below the drawn dashboard)
