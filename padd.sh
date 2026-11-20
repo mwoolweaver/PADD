@@ -487,7 +487,6 @@ GetSummaryInformation() {
         top_client_raw="N/A"
         dns_queries_frequency="N/A"
         dns_query_rate_label="Qrs/min:"
-        q_rate_is_sec=false
         return
     fi
 
