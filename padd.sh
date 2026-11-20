@@ -1075,6 +1075,38 @@ ShortenBranch() {
     eval "$2=\${_branch}"
 }
 
+# Formats a component version for the ultra layout:
+# on "master", uses the normalized version ($2); on other branches,
+# uses the first 3 chars of branch ($3) + "@" + first 8 chars of hash ($4).
+FormatUltraComponentVersion() {
+    case "$5" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local branch="$1" ver="$2" hash="$4" short_branch short_hash out
+
+    if [ "${branch}" = "master" ]; then
+        out="${ver}"
+    elif [ -z "${branch}" ]; then
+        out="?"
+    else
+        short_branch="$3"
+        while [ "${#short_branch}" -gt 3 ]; do
+            short_branch="${short_branch%?}"
+        done
+
+        if [ -n "${hash}" ] && [ "${hash}" != "null" ]; then
+            short_hash="${hash}"
+            while [ "${#short_hash}" -gt 8 ]; do
+                short_hash="${short_hash%?}"
+            done
+            out="${short_branch}@${short_hash}"
+        else
+            out="${short_branch}"
+        fi
+    fi
+
+    # shellcheck disable=SC2034
+    eval "$5=\${out}"
+}
+
 # Normalizes a version string (strips '-*' prerelease suffix and leading 'v')
 # and assigns it to <variable> without a subshell
 CleanVersion() {
@@ -1116,6 +1148,7 @@ GetVersionInformation() {
         CORE_VERSION="N/A"
         WEB_VERSION="N/A"
         FTL_VERSION="N/A"
+        ultra_version_info="Pi-hole® N/A, Web N/A, FTL N/A"
         core_version_heatmap=${reset_text}
         web_version_heatmap=${reset_text}
         ftl_version_heatmap=${reset_text}
@@ -1133,6 +1166,7 @@ GetVersionInformation() {
         GetPADDValue version.docker.remote GITHUB_DOCKER_VERSION
         docker_version_converted="$(VersionConverter "${DOCKER_VERSION}")"
         docker_version_latest_converted="$(VersionConverter "${GITHUB_DOCKER_VERSION}")"
+        ultra_version_info="Docker ${docker_version_heatmap}${DOCKER_VERSION}${reset_text}"
 
     # Note: the version comparison will fail for any Docker tag not following a 'YYYY.MM.VV' scheme
     #       e.g. 'nightly', 'beta', 'v6-pre-alpha' and might set a false out_of_date_flag
@@ -1245,6 +1279,17 @@ GetVersionInformation() {
             ShortenBranch "${FTL_BRANCH}" FTL_VERSION
         fi
     fi
+
+    local ultra_core ultra_web ultra_ftl
+    FormatUltraComponentVersion "${CORE_BRANCH}" "${CORE_VERSION}" "${CORE_BRANCH}" "${CORE_HASH}" ultra_core
+    if [ "${WEB_VERSION}" = "N/A" ]; then
+        ultra_web="N/A"
+    else
+        FormatUltraComponentVersion "${WEB_BRANCH}" "${WEB_VERSION}" "${WEB_BRANCH}" "${WEB_HASH}" ultra_web
+    fi
+    FormatUltraComponentVersion "${FTL_BRANCH}" "${FTL_VERSION}" "${FTL_BRANCH}" "${FTL_HASH}" ultra_ftl
+
+    ultra_version_info="Pi-hole® ${core_version_heatmap}${ultra_core}${reset_text}, Web ${web_version_heatmap}${ultra_web}${reset_text}, FTL ${ftl_version_heatmap}${ultra_ftl}${reset_text}"
 
 }
 
@@ -1639,7 +1684,7 @@ PrintDashboard() {
     else # $1 = "ultra"
         # ultra is a screen with at least 100 columns and 32 lines
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_1}"
-        moveXOffset; printf "%s${clear_line}\n" "${padd_logo_2}   ${version_info}, PADD ${padd_version_heatmap}${padd_version}${reset_text}"
+        moveXOffset; printf "%s${clear_line}\n" "${padd_logo_2}   ${ultra_version_info}, PADD ${padd_version_heatmap}${padd_version}${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_3}   ${dns_check_box} DNS   ${ftl_check_box} FTL   ${mega_status}${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" ""
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}STATS ==============================================================================================${reset_text}"
