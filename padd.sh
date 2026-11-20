@@ -1732,10 +1732,14 @@ truncateString() {
 # https://unix.stackexchange.com/a/338844
 convertUptime() {
     # Sets uptime_out, e.g. "3 days, 04 hours, 05 minutes", without a subshell
-    local D H M
-    D=$(($1/60/60/24))
-    H=$(($1/60/60%24))
-    M=$(($1/60%60))
+    local secs D H M
+    secs="${1:-0}"
+    case "${secs}" in
+        ''|*[!0-9]*) secs=0 ;;
+    esac
+    D=$((secs/60/60/24))
+    H=$((secs/60/60%24))
+    M=$((secs/60%60))
     if [ "${H}" -lt 10 ]; then H="0${H}"; fi
     if [ "${M}" -lt 10 ]; then M="0${M}"; fi
     uptime_out="${D} days, ${H} hours, ${M} minutes"
