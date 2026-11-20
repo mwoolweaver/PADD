@@ -469,6 +469,7 @@ GetPADDValue() {
 }
 
 GetSummaryInformation() {
+    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level
     if [ "${connection_down_flag}" = true ]; then
         clients="N/A"
         blocking_enabled="N/A"
@@ -540,7 +541,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-
+    local system_uptime_raw cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
@@ -686,6 +687,7 @@ GetSystemInformation() {
 }
 
 GetNetworkInformation() {
+    local gateway_v4_iface gateway_v6_iface pi_ip4_addrs pi_ip6_addrs DHCP_ACTIVE DHCP_START DHCP_END DHCP_IPv6 PIHOLE_DOMAIN count dns_count DNSSEC CONDITIONAL_FORWARDING tx_bytes_raw tx_bytes_unit rx_bytes_raw rx_bytes_unit
     if [ "${connection_down_flag}" = true ]; then
         iface_name="N/A"
         pi_ip4_addr="N/A"
@@ -870,6 +872,7 @@ GetNetworkInformation() {
 }
 
 GetPiholeInformation() {
+    local ftl_dns_port ftl_cpu_raw ftl_mem_percentage_raw
     if [ "${connection_down_flag}" = true ]; then
         ftl_status="No connection"
         ftl_heatmap=${red_text}
@@ -979,7 +982,7 @@ CompareMasterVersion() {
 }
 
 GetVersionInformation() {
-    local CORE_VERSION_raw FTL_VERSION_raw
+    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION
     if [ "${connection_down_flag}" = true ]; then
         DOCKER_VERSION=null
         CORE_VERSION="N/A"
@@ -1118,7 +1121,7 @@ GetVersionInformation() {
 }
 
 GetPADDInformation() {
-    local release_json
+    local release_json padd_version_latest_converted padd_version_converted
 
     # PADD version information...
     release_json="$(curl --connect-timeout 5 --max-time 20 --silent https://api.github.com/repos/pi-hole/PADD/releases/latest)"
@@ -1570,6 +1573,7 @@ BarGenerator() {
 
 # Checks the size of the screen and sets `padd_size`, `xOffset`, and `yOffset`
 SizeChecker(){
+    local console_width console_height width height xMaxOffset yMaxOffset
     # Adding a tiny delay here to give the kernel a bit of time to
     # report new sizes correctly after a terminal resize;
     # this reduces flickering of GenerateSizeDependentOutput() items
@@ -1738,7 +1742,7 @@ convertUptime() {
 }
 
 secretRead() {
-
+    local key charcount
     # POSIX compliant function to read user-input and
     # mask every character entered by (*)
     #
@@ -2074,7 +2078,7 @@ NormalPADD() {
 }
 
 Update() {
-
+    local padd_script_path tmp_script
     GetPADDInformation
 
     # GetPADDInformation leaves padd_version_latest empty when GitHub can't be reached
