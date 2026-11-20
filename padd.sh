@@ -542,7 +542,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw swap_percent_raw
+    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw memory_used_raw memory_total_raw swap_percent_raw
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
@@ -558,6 +558,7 @@ GetSystemInformation() {
 
         memory_percent=0
         memory_heatmap=${reset_text}
+        memory_used_total="N/A"
 
         swap_percent=0
         swap_heatmap=${reset_text}
@@ -681,6 +682,18 @@ GetSystemInformation() {
     memory_percent=$(printf %.1f "${memory_percent_raw}")
     HeatmapGenerator "${memory_percent}"
     memory_heatmap="${heat_out}"
+
+    GetPADDValue system.memory.ram.used memory_used_raw
+    GetPADDValue system.memory.ram.total memory_total_raw
+    if [ -n "${memory_used_raw}" ] && [ "${memory_used_raw}" != "null" ] && [ -n "${memory_total_raw}" ] && [ "${memory_total_raw}" != "null" ]; then
+        memory_used_total=$(awk -v u="${memory_used_raw}" -v t="${memory_total_raw}" 'BEGIN {
+            if (u >= 1048576) us = sprintf("%.1fG", u / 1048576); else us = sprintf("%.0fM", u / 1024);
+            if (t >= 1048576) ts = sprintf("%.1fG", t / 1048576); else ts = sprintf("%.0fM", t / 1024);
+            printf "%s/%s\n", us, ts
+        }')
+    else
+        memory_used_total="N/A"
+    fi
 
     # Swap use and heatmap (bar is generated in GenerateSizeDependentOutput)
     GetPADDValue system.memory.swap.%used swap_percent_raw
@@ -1238,6 +1251,7 @@ GenerateSizeDependentOutput() {
         truncateString "${top_blocked_raw}" 68 top_blocked
         truncateString "${top_domain_raw}" 68 top_domain
         truncateString "${top_client_raw}" 68 top_client
+        truncateString "${sys_model}" 20 sys_model_short
 
         if [ "${temp_unicode}" = true ]; then
             temp_padding=10
@@ -1517,7 +1531,7 @@ PrintDashboard() {
         moveXOffset; printf " %-10s${dnssec_heatmap}%-19s${reset_text} %-10s${dhcp_ipv6_heatmap}%-9s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "IPv6 Spt:" "${dhcp_ipv6_status}"
         moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-20s${reset_text}%-6s${dhcp_range_heatmap}%-36s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Range" "${dhcp_range}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-39s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model}" "Swap:" "${swap_bar}" "${swap_percent}%"
+moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Swap:" "${swap_bar}" "${swap_percent}%"
         moveXOffset; printf " %-10s%-39s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Memory:" "${memory_bar}" "${memory_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_percent_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
     fi
