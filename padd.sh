@@ -937,8 +937,9 @@ GetPiholeInformation() {
 }
 
 # Shortens common custom branch names (fix/, tweak/, new/)
-# and returns the first 7 characters for display
+# and assigns the first 7 characters to <variable> without a subshell
 ShortenBranch() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
     local branch_val="$1"
     local _branch
     case "${branch_val}" in
@@ -947,17 +948,23 @@ ShortenBranch() {
         tweak/*) _branch="t/${branch_val#tweak/}" ;;
         *)       _branch="${branch_val}" ;;
     esac
-    printf '%.7s\n' "${_branch}"
+    # Trim to 7 chars in-process (mirrors printf '%.7s' without a subshell)
+    while [ "${#_branch}" -gt 7 ]; do
+        _branch="${_branch%?}"
+    done
+    # shellcheck disable=SC2034
+    eval "$2=\${_branch}"
 }
 
-# Normalizes a version string for display (strips '-*' prerelease suffix and leading 'v')
-# Arguments: $1 = raw version string
-# Output: prints cleaned version string
+# Normalizes a version string (strips '-*' prerelease suffix and leading 'v')
+# and assigns it to <variable> without a subshell
 CleanVersion() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
     local ver="$1"
     ver="${ver%%-*}"
+    # shellcheck disable=SC2034
     ver="${ver#v}"
-    printf '%s\n' "${ver}"
+    eval "$2=\${ver}"
 }
 
 # Compares local and remote versions (after stripping '-*' and leading 'v')
@@ -1025,7 +1032,7 @@ GetVersionInformation() {
 
     if [ "${CORE_BRANCH}" = "master" ]; then
         GetPADDValue version.core.local.version CORE_VERSION_raw
-        CORE_VERSION="$(CleanVersion "${CORE_VERSION_raw}")"
+        CleanVersion "${CORE_VERSION_raw}" CORE_VERSION
         GetPADDValue version.core.remote.version GITHUB_CORE_VERSION
         CompareMasterVersion "${CORE_VERSION}" "${GITHUB_CORE_VERSION}" core_version_heatmap
     else
@@ -1047,7 +1054,7 @@ GetVersionInformation() {
                 core_version_heatmap=${red_text}
             fi
 
-            CORE_VERSION="$(ShortenBranch "${CORE_BRANCH}")"
+            ShortenBranch "${CORE_BRANCH}" CORE_VERSION
         fi
     fi
 
@@ -1058,7 +1065,7 @@ GetVersionInformation() {
         GetPADDValue version.web.local.branch WEB_BRANCH
 
         if [ "${WEB_BRANCH}" = "master" ]; then
-            WEB_VERSION="$(CleanVersion "${WEB_VERSION}")"
+            CleanVersion "${WEB_VERSION}" WEB_VERSION
             GetPADDValue version.web.remote.version GITHUB_WEB_VERSION
             CompareMasterVersion "${WEB_VERSION}" "${GITHUB_WEB_VERSION}" web_version_heatmap
         else
@@ -1080,7 +1087,7 @@ GetVersionInformation() {
                     web_version_heatmap=${red_text}
                 fi
 
-                WEB_VERSION="$(ShortenBranch "${WEB_BRANCH}")"
+                ShortenBranch "${WEB_BRANCH}" WEB_VERSION
             fi
         fi
     else
@@ -1094,7 +1101,7 @@ GetVersionInformation() {
 
     if [ "${FTL_BRANCH}" = "master" ]; then
         GetPADDValue version.ftl.local.version FTL_VERSION_raw
-        FTL_VERSION="$(CleanVersion "${FTL_VERSION_raw}")"
+        CleanVersion "${FTL_VERSION_raw}" FTL_VERSION
         GetPADDValue version.ftl.remote.version GITHUB_FTL_VERSION
         CompareMasterVersion "${FTL_VERSION}" "${GITHUB_FTL_VERSION}" ftl_version_heatmap
     else
@@ -1116,7 +1123,7 @@ GetVersionInformation() {
                 ftl_version_heatmap=${red_text}
             fi
 
-            FTL_VERSION="$(ShortenBranch "${FTL_BRANCH}")"
+            ShortenBranch "${FTL_BRANCH}" FTL_VERSION
         fi
     fi
 
