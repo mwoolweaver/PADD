@@ -2314,6 +2314,7 @@ NormalPADD() {
     sleep 5 &
     sleepPID=$!
     wait "${sleepPID}"
+    sleepPID=""
 
     # Start getting our information for next round
     now=$(date +%s)
@@ -2372,17 +2373,21 @@ NormalPADD() {
   done
 }
 
-# Single-quotes $1 for safe inclusion in an eval command string (no subshells/forks)
+# Wraps $1 in single quotes and escapes embedded single quotes (' -> '\'') so
+# the resulting string is safe to splice into an `eval` command without subshells
+# or external forks, assigning the quoted result to variable name $2.
 QuoteShellArg() {
     case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
     local _rem="$1" _quoted="" _sq="'" _q="'\\''"
     while :; do
         case "${_rem}" in
             *"${_sq}"*)
+                # Append text before the next single quote, then emit an escaped quote
                 _quoted="${_quoted}${_rem%%"${_sq}"*}${_q}"
                 _rem="${_rem#*"${_sq}"}"
                 ;;
             *)
+                # Append the remaining tail and finish
                 _quoted="${_quoted}${_rem}"
                 break
                 ;;
@@ -2491,7 +2496,11 @@ CleanExit() {
 
     # if background sleep is running, kill it
     # http://mywiki.wooledge.org/SignalTrap#When_is_the_signal_handled.3F
-    kill "${sleepPID}" > /dev/null 2>&1
+    # Only signal sleepPID if a background sleep process is currently tracked.
+    if [ -n "${sleepPID:-}" ]; then
+        kill "${sleepPID}" > /dev/null 2>&1
+        sleepPID=""
+    fi
 
     #  Delete session from FTL server
     DeleteSession
@@ -2512,7 +2521,11 @@ TerminalResize(){
 
     printf '\033[H\033[2J\033[3J'
 
-    kill "${sleepPID}" > /dev/null 2>&1
+    # Only signal sleepPID if a background sleep process is currently tracked.
+    if [ -n "${sleepPID:-}" ]; then
+        kill "${sleepPID}" > /dev/null 2>&1
+        sleepPID=""
+    fi
 }
 
 main(){
