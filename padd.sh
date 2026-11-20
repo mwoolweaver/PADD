@@ -2327,43 +2327,29 @@ NormalPADD() {
 }
 
 Update() {
-    local padd_script_path tmp_script
-    GetPADDInformation
+    local padd_script_path repo_dir
 
-    # GetPADDInformation leaves padd_version_latest empty when GitHub can't be reached
-    if [ -z "${padd_version_latest}" ]; then
-        echo "${check_box_bad} Cannot check for updates. Is GitHub reachable?"
+    if ! command -v git >/dev/null 2>&1; then
+        echo "${check_box_bad} 'git' is required for --update on this fork."
         exit 1
     fi
 
-    if [ "${padd_out_of_date_flag}" = "true" ]; then
-        echo "${check_box_info} Updating PADD from ${padd_version} to ${padd_version_latest}"
+    padd_script_path=$(realpath "$0" 2>/dev/null) || padd_script_path="$0"
+    repo_dir=$(CDPATH='' cd -- "$(dirname -- "${padd_script_path}")" && pwd -P)
 
-        padd_script_path=$(realpath "$0")
-
-        echo "${check_box_info} Downloading PADD update ..."
-
-        tmp_script=$(mktemp) || exit 1
-        if ! curl -fsSL --connect-timeout 5 --max-time 20 https://install.padd.sh -o "${tmp_script}" > /dev/null 2>&1 || ! sh -n "${tmp_script}" > /dev/null 2>&1; then
-            rm -f "${tmp_script}"
-            echo "${check_box_bad} Cannot download PADD update"
-            echo "${check_box_info} Go to https://install.padd.sh to download the update manually"
-            exit 1
-        fi
-
-        if ! cat "${tmp_script}" > "${padd_script_path}"; then
-            rm -f "${tmp_script}"
-            echo "${check_box_bad} Cannot write to ${padd_script_path}. Check its permissions, or download the update manually"
-            exit 1
-        fi
-
-        rm -f "${tmp_script}"
-        echo "${check_box_good} ... done. Restart PADD for the update to take effect"
-    else
-        echo "${check_box_good} You are already using the latest PADD version ${padd_version}"
+    if ! git -C "${repo_dir}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "${check_box_bad} Not inside a Git repository (${repo_dir}); cannot run git pull."
+        exit 1
     fi
 
-    exit 0
+    echo "${check_box_info} Pulling updates in ${repo_dir}..."
+    if git -C "${repo_dir}" pull; then
+        echo "${check_box_good} Repository updated. Restart PADD for changes to take effect."
+        exit 0
+    else
+        echo "${check_box_bad} 'git pull' failed."
+        exit 1
+    fi
 }
 
 DisplayHelp() {
