@@ -1340,19 +1340,19 @@ GenerateSizeDependentOutput() {
         fi
 
     elif [ "$1" = "ultra" ]; then
-        BarGenerator "${ads_percentage_today}" 35 "color"
+        BarGenerator "${ads_percentage_today}" 40 "color"
         ads_blocked_bar=${bar_out}
 
-        truncateString "${latest_blocked_raw}" 78 latest_blocked
-        truncateString "${top_blocked_raw}" 78 top_blocked
-        truncateString "${top_domain_raw}" 78 top_domain
-        truncateString "${top_client_raw}" 78 top_client
-        truncateString "${sys_model}" 26 sys_model_short
+        truncateString "${latest_blocked_raw}" 88 latest_blocked
+        truncateString "${top_blocked_raw}" 88 top_blocked
+        truncateString "${top_domain_raw}" 88 top_domain
+        truncateString "${top_client_raw}" 88 top_client
+        truncateString "${sys_model}" 22 sys_model_short
 
         if [ "${temp_unicode}" = true ]; then
-            temp_padding=19
+            temp_padding=23
         else
-            temp_padding=18
+            temp_padding=22
         fi
     fi
 
@@ -1374,12 +1374,19 @@ GenerateSizeDependentOutput() {
         cpu_bar=${bar_out}
         BarGenerator "${memory_percent}" 7
         memory_bar=${bar_out}
+    elif [ "$1" = "ultra" ]; then
+        BarGenerator "${cpu_percent}" 15
+        cpu_bar=${bar_out}
+        BarGenerator "${memory_percent}" 15
+        memory_bar=${bar_out}
+        BarGenerator "${swap_percent}" 15
+        swap_bar=${bar_out}
     else
         BarGenerator "${cpu_percent}" 10
         cpu_bar=${bar_out}
         BarGenerator "${memory_percent}" 10
         memory_bar=${bar_out}
-        if [ "$1" = "mega" ] || [ "$1" = "ultra" ]; then
+        if [ "$1" = "mega" ]; then
             BarGenerator "${swap_percent}" 10
             swap_bar=${bar_out}
         fi
@@ -1630,34 +1637,38 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-39s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_percent_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
     else # $1 = "ultra"
-        # ultra is a screen with at least 90 columns and 30 lines
+        # ultra is a screen with at least 100 columns and 32 lines
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_1}"
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_2}   ${version_info}, PADD ${padd_version_heatmap}${padd_version}${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" "${padd_logo_3}   ${dns_check_box} DNS   ${ftl_check_box} FTL   ${mega_status}${reset_text}"
         moveXOffset; printf "%s${clear_line}\n" ""
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}STATS ====================================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-26s%-10s[%s] %-5s${clear_line}\n" "Blocking:" "${domains_being_blocked} domains" "Piholed:" "${ads_blocked_bar}" "${ads_percentage_today}%"
-        moveXOffset; printf " %-10s%-36s%s out of %s queries${clear_line}\n" "Clients:" "${clients}" "${ads_blocked_today}" "${dns_queries_today}"
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}STATS ==============================================================================================${reset_text}"
+        moveXOffset; printf " %-10s%-29s%-10s[%s] %-5s${clear_line}\n" "Blocking:" "${domains_being_blocked} domains" "Piholed:" "${ads_blocked_bar}" "${ads_percentage_today}%"
+        moveXOffset; printf " %-10s%-39s%s out of %s queries${clear_line}\n" "Clients:" "${clients}" "${ads_blocked_today}" "${dns_queries_today}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Latest:" "${latest_blocked}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Ad:" "${top_blocked}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Dmn:" "${top_domain}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Clnt:" "${top_client}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}FTL ======================================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-18s%-10s${ftl_cpu_heatmap}%-10s${reset_text}%-10s${ftl_mem_heatmap}%-10s${reset_text}%-10s%s${clear_line}\n" "PID:" "${ftlPID}" "CPU Use:" "${ftl_cpu}" "Mem. Use:" "${ftl_mem_percentage}" "${dns_query_rate_label}" "${dns_queries_frequency}"
-        moveXOffset; printf " %-10s%-46s%-10s%s${clear_line}\n" "DNSCache:" "${cache_inserts} insertions, ${cache_evictions} deletions, ${cache_size} entries" "API Took:" "${api_took}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}NETWORK ==================================================================================${reset_text}"
-        moveXOffset; printf " %-28s%-28s%-9s%s${clear_line}\n" "Hostname: ${full_hostname}" "Gateway: ${gw_v4_addr}" "IPv6 GW:" "${gw_v6_addr}"
-        moveXOffset; printf " %-28s%-14s%-14s${clear_line}\n" "Interfce: ${iface_name}" "TX: ${tx_bytes}" "RX: ${rx_bytes}"
-        moveXOffset; printf " %-28s%-10s%s${clear_line}\n" "IPv4: ${pi_ip4_addr}" "IPv6:" "${pi_ip6_addr}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS =====================================================DHCP ============================${reset_text}"
-        moveXOffset; printf " %-28s%-28s%-6s${dhcp_heatmap}%-27s${reset_text}${clear_line}\n" "Servers: ${dns_information}" "Port: ${dns_port_display}" "DHCP:" "${dhcp_status}"
-        moveXOffset; printf " %-8s${dnssec_heatmap}%-20s${reset_text}%-28s%-10s${dhcp_ipv6_heatmap}%-23s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain: ${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
-        moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-18s${reset_text}%-28s%-7s${dhcp_range_heatmap}%-26s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Privacy: ${privacy_level_display}" "Range:" "${dhcp_range}"
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM ===================================================================================${reset_text}"
-        moveXOffset; printf " %-28s%-28s%-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device: ${sys_model_short}" "RAM: ${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
-        moveXOffset; printf " %-56s%-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime: ${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
-        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text}%-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-6s${reset_text}%-10s[${cpu_percent_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
-        moveXOffset; printf " %-28s%-28s${clear_line}" "Procs: ${sys_procs}" "Cores: ${sys_cores}"
+        moveXOffset; printf "%s${clear_line}\n" ""
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}FTL ================================================================================================${reset_text}"
+        moveXOffset; printf " %-10s%-22s%-10s${ftl_cpu_heatmap}%-14s${reset_text}%-10s${ftl_mem_heatmap}%-14s${reset_text}%-10s%s${clear_line}\n" "PID:" "${ftlPID}" "CPU Use:" "${ftl_cpu}" "Mem. Use:" "${ftl_mem_percentage}" "${dns_query_rate_label}" "${dns_queries_frequency}"
+        moveXOffset; printf " %-10s%-54s%-10s%s${clear_line}\n" "DNSCache:" "${cache_inserts} insertions, ${cache_evictions} deletions, ${cache_size} entries" "API Took:" "${api_took}"
+        moveXOffset; printf "%s${clear_line}\n" ""
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}NETWORK ============================================================================================${reset_text}"
+        moveXOffset; printf " %-32s%-32s%-9s%s${clear_line}\n" "Hostname: ${full_hostname}" "Gateway: ${gw_v4_addr}" "IPv6 GW:" "${gw_v6_addr}"
+        moveXOffset; printf " %-32s%-16s%-16s${clear_line}\n" "Interfce: ${iface_name}" "TX: ${tx_bytes}" "RX: ${rx_bytes}"
+        moveXOffset; printf " %-32s%s${clear_line}\n" "IPv4: ${pi_ip4_addr}" "IPv6: ${pi_ip6_addr}"
+        moveXOffset; printf "%s${clear_line}\n" ""
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS ============================================================ DHCP ==============================${reset_text}"
+        moveXOffset; printf " %-32s%-32s%-6s${dhcp_heatmap}%-29s${reset_text}${clear_line}\n" "Servers: ${dns_information}" "Port: ${dns_port_display}" "DHCP:" "${dhcp_status}"
+        moveXOffset; printf " %-8s${dnssec_heatmap}%-24s${reset_text}%-32s%-10s${dhcp_ipv6_heatmap}%-25s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain: ${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
+        moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-22s${reset_text}%-32s%-7s${dhcp_range_heatmap}%-28s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Privacy: ${privacy_level_display}" "Range:" "${dhcp_range}"
+        moveXOffset; printf "%s${clear_line}\n" ""
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =============================================================================================${reset_text}"
+        moveXOffset; printf " %-32s%-32s%-10s[${memory_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "Device: ${sys_model_short}" "RAM: ${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
+        moveXOffset; printf " %-64s%-10s[${swap_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "Uptime: ${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
+        moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text}%-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-10s${reset_text}%-10s[${cpu_percent_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
+        moveXOffset; printf " %-32s%-32s${clear_line}" "Procs: ${sys_procs}" "Cores: ${sys_cores}"
     fi
 
     # Clear to end of screen (below the drawn dashboard)
@@ -1763,10 +1774,10 @@ SizeChecker(){
     console_height=$(tput lines)
 
     # Ultra
-    if [ "${console_width}" -ge "90" ] && [ "${console_height}" -ge "30" ]; then
+    if [ "${console_width}" -ge "100" ] && [ "${console_height}" -ge "32" ]; then
         padd_size="ultra"
-        width=90
-        height=30
+        width=100
+        height=32
     # Below Ultra. Gives you Mega.
     elif [ "${console_width}" -ge "80" ] && [ "${console_height}" -ge "26" ]; then
         padd_size="mega"
