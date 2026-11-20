@@ -541,7 +541,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-    local system_uptime_raw cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw
+    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
