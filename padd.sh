@@ -487,6 +487,7 @@ GetSummaryInformation() {
         top_client_raw="N/A"
         dns_queries_frequency="N/A"
         dns_query_rate_label="Qrs/min:"
+        q_rate_is_sec=false
         return
     fi
 
@@ -536,10 +537,21 @@ GetSummaryInformation() {
         print val
     }')
 
-    if awk -v q="${dns_queries_frequency}" 'BEGIN { exit !((q + 0) > 75) }'; then
+    : "${q_rate_is_sec:=false}"
+
+    if awk -v q="${dns_queries_frequency}" -v is_sec="${q_rate_is_sec}" 'BEGIN {
+        val = q + 0
+        if (is_sec == "true") {
+            exit !(val >= 60)
+        } else {
+            exit !(val > 75)
+        }
+    }'; then
+        q_rate_is_sec=true
         dns_query_rate_label="Qrs/sec:"
         dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN { printf "%.1f\n", f }')
     else
+        q_rate_is_sec=false
         dns_query_rate_label="Qrs/min:"
     fi
 
