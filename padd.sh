@@ -433,12 +433,11 @@ GetLatestDomain() {
         return 0
     fi
 
-    priv="${privacy_level}"
+    # Read config.privacy_level directly from padd_data (zero subshells/forks)
+    # rather than relying on a global privacy_level that GetSummaryInformation() shadows.
+    GetPADDValue config.privacy_level priv
     if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
-        GetPADDValue config.privacy_level priv
-        if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
-            priv=0
-        fi
+        priv=0
     fi
 
     if [ "${priv}" -ge 1 ]; then
