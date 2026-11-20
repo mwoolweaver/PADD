@@ -2322,25 +2322,23 @@ NormalPADD() {
     # Request PADD data after 30 seconds or if the connection was lost
     if [ $((now - LastCheckFullInformation)) -ge 30 ] || [ "${connection_down_flag}" = true ] ; then
         GetPADDData
-        GetLatestDomain
         LastCheckFullInformation="${now}"
     else
         # Request only a subset of the data
         GetPADDData "?full=false"
-        GetLatestDomain
     fi
 
     # If the session has expired, log in again and fetch the data once more
     if [ "${padd_data}" = "401" ]; then
         if Authenticate; then
             GetPADDData
-            GetLatestDomain
         fi
     fi
 
     connection_down_flag=false
     # Post-startup recovery: on connection drop (000), failed re-auth (401), or empty jq
-    # output, display N/A placeholders and retry on the next 5-second tick
+    # output, mark connection down, set N/A placeholders (including latest_domain), and
+    # skip extra HTTP retries until the next 5-second tick
     if [ "${padd_data}" = "000" ] || [ "${padd_data}" = "401" ] || [ -z "${padd_data}" ]; then
         connection_down_flag=true
         GetSystemInformation
@@ -2348,6 +2346,7 @@ NormalPADD() {
         GetPiholeInformation
         GetNetworkInformation
         GetVersionInformation
+        GetLatestDomain
         # set flag to update network information in the next loop in case the connection is re-established
         get_network_information_required=true
     else
@@ -2355,6 +2354,8 @@ NormalPADD() {
         GetSystemInformation
         GetSummaryInformation
         GetPiholeInformation
+        # Only query /queries?length=1 once FTL is healthy and privacy/status fields are ready
+        GetLatestDomain
 
         if [ $((now - LastCheckNetworkInformation)) -ge 30 ] || [ "${get_network_information_required}" = true ]; then
             GetNetworkInformation
