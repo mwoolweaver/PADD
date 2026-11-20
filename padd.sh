@@ -1209,17 +1209,18 @@ GetVersionInformation() {
         GetPADDValue version.docker.remote GITHUB_DOCKER_VERSION
         docker_version_converted="$(VersionConverter "${DOCKER_VERSION}")"
         docker_version_latest_converted="$(VersionConverter "${GITHUB_DOCKER_VERSION}")"
-        ultra_version_info="Docker ${docker_version_heatmap}${DOCKER_VERSION}${reset_text}"
 
-    # Note: the version comparison will fail for any Docker tag not following a 'YYYY.MM.VV' scheme
-    #       e.g. 'nightly', 'beta', 'v6-pre-alpha' and might set a false out_of_date_flag
-    #       As those versions are not meant to be used in production, we ignore this small bug
+        # Note: the version comparison will fail for any Docker tag not following a 'YYYY.MM.VV' scheme
+        #       e.g. 'nightly', 'beta', 'v6-pre-alpha' and might set a false out_of_date_flag
+        #       As those versions are not meant to be used in production, we ignore this small bug
         if [ "${docker_version_converted}" -lt "${docker_version_latest_converted}" ]; then
             out_of_date_flag="true"
             docker_version_heatmap=${red_text}
         else
             docker_version_heatmap=${green_text}
         fi
+
+        ultra_version_info="Docker ${docker_version_heatmap}${DOCKER_VERSION}${reset_text}"
         return
     fi
 
@@ -2406,6 +2407,7 @@ Update() {
     fi
 
     echo "${check_box_good} Repository updated and verified. Restarting PADD..."
+    xOffset=0
     if [ -x "${target_script}" ]; then
         eval "exec \"${target_script}\"${restart_args}"
     fi
