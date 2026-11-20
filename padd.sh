@@ -894,6 +894,19 @@ GetNetworkInformation() {
         dns_information="${dns_count} servers"
     fi
 
+    GetPADDValue config.dns_port ftl_dns_port
+    if [ -z "${ftl_dns_port}" ] || [ "${ftl_dns_port}" = "null" ]; then
+        dns_port_display="N/A"
+    else
+        dns_port_display="${ftl_dns_port}"
+    fi
+
+    GetPADDValue config.dns_domain PIHOLE_DOMAIN
+    if [ -z "${PIHOLE_DOMAIN}" ] || [ "${PIHOLE_DOMAIN}" = "null" ]; then
+        dns_domain_display="N/A"
+    else
+        dns_domain_display="${PIHOLE_DOMAIN}"
+    fi
 
     # DNSSEC
     GetPADDValue config.dns_dnssec DNSSEC
@@ -1553,8 +1566,8 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-15s %-4s%-9s %-4s%-9s${clear_line}\n" "Interfce:" "${iface_name}" "TX:" "${tx_bytes}" "RX:" "${rx_bytes}"
         moveXOffset; printf " %-6s%-19s %-10s%-29s${clear_line}\n" "IPv4:" "${pi_ip4_addr}" "IPv6:" "${pi_ip6_addr}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS ==========================DHCP==============================================${reset_text}"
-        moveXOffset; printf " %-10s%-12s %-6s%-6s %-6s${dhcp_heatmap}%-15s${reset_text}${clear_line}\n" "Servers:" "${dns_information}" "Port:" "${dns_port_display}" "DHCP:" "${dhcp_status}"
-        moveXOffset; printf " %-10s${dnssec_heatmap}%-12s${reset_text} %-8s%-13s %-10s${dhcp_ipv6_heatmap}%-9s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain:" "${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
+        moveXOffset; printf " %-10s%-12s %-6s%-8s %-6s${dhcp_heatmap}%-14s${reset_text}${clear_line}\n" "Servers:" "${dns_information}" "Port:" "${dns_port_display}" "DHCP:" "${dhcp_status}"
+        moveXOffset; printf " %-10s${dnssec_heatmap}%-12s${reset_text} %-8s%-14s %-10s${dhcp_ipv6_heatmap}%-9s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain:" "${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
         moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-20s${reset_text}%-6s${dhcp_range_heatmap}%-31s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Range" "${dhcp_range}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =========================================================================${reset_text}"
         moveXOffset; printf " %-10s%-20s %-5s%-13s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model_short}" "RAM:" "${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
