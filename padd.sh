@@ -537,22 +537,22 @@ GetSummaryInformation() {
         print val
     }')
 
-    : "${q_rate_is_sec:=false}"
-
-    if awk -v q="${dns_queries_frequency}" -v is_sec="${q_rate_is_sec}" 'BEGIN {
-        val = q + 0
-        if (is_sec == "true") {
-            exit !(val >= 60)
-        } else {
-            exit !(val > 75)
-        }
-    }'; then
-        q_rate_is_sec=true
+    if awk -v q="${dns_queries_frequency}" 'BEGIN { exit !((q + 0) > 100) }'; then
         dns_query_rate_label="Qrs/sec:"
-        dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN { printf "%.1f\n", f }')
+        dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN {
+            freq = f + 0
+            if (freq > 10) printf "%.0f\n", freq
+            else if (freq < 1) printf "%.2f\n", freq
+            else printf "%.1f\n", freq
+        }')
     else
-        q_rate_is_sec=false
         dns_query_rate_label="Qrs/min:"
+        dns_queries_frequency=$(awk -v q="${dns_queries_frequency}" 'BEGIN {
+            freq = q + 0
+            if (freq > 10) printf "%.0f\n", freq
+            else if (freq < 1) printf "%.2f\n", freq
+            else printf "%.1f\n", freq
+        }')
     fi
 
     # Substitute values returned by FTL for privacy level >= 1 / >= 2
