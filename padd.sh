@@ -559,6 +559,9 @@ GetSystemInformation() {
         memory_percent=0
         memory_heatmap=${reset_text}
 
+        swap_percent=0
+        swap_heatmap=${reset_text}
+
         sys_model="N/A"
         return
     fi
@@ -678,6 +681,15 @@ GetSystemInformation() {
     memory_percent=$(printf %.1f "${memory_percent_raw}")
     HeatmapGenerator "${memory_percent}"
     memory_heatmap="${heat_out}"
+
+    # Swap use and heatmap (bar is generated in GenerateSizeDependentOutput)
+    GetPADDValue system.memory.swap.%used swap_percent_raw
+    if [ -z "${swap_percent_raw}" ] || [ "${swap_percent_raw}" = "null" ]; then
+        swap_percent_raw=0
+    fi
+    swap_percent=$(printf %.1f "${swap_percent_raw}")
+    HeatmapGenerator "${swap_percent}"
+    swap_heatmap="${heat_out}"
 
     # Get device model
     GetPADDValue host_model sys_model
@@ -1251,6 +1263,10 @@ GenerateSizeDependentOutput() {
         cpu_bar=${bar_out}
         BarGenerator "${memory_percent}" 10
         memory_bar=${bar_out}
+        if [ "$1" = "mega" ]; then
+            BarGenerator "${swap_percent}" 10
+            swap_bar=${bar_out}
+        fi
     fi
 }
 
@@ -1497,6 +1513,7 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-39s${clear_line}\n" "Device:" "${sys_model}"
         moveXOffset; printf " %-10s%-39s %-10s[${memory_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Uptime:" "${system_uptime}" "Memory:" "${memory_bar}" "${memory_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text} %-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-7s${reset_text} %-10s[${cpu_load_1_heatmap}%-10s${reset_text}] %-6s${clear_line}" "CPU Temp:" "${temperature}" "CPU Use:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
+        moveXOffset; printf " %-10s%-39s %-10s[${swap_heatmap}%-10s${reset_text}] %-6s${clear_line}\n" "Device:" "${sys_model}" "Swap:" "${swap_bar}" "${swap_percent}%"
     fi
 
     # Clear to end of screen (below the drawn dashboard)
