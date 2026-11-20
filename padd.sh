@@ -2465,11 +2465,9 @@ Update() {
     xOffset=0
     QuoteShellArg "${target_script}" quoted_script
     if [ -x "${target_script}" ]; then
-        printf 'DEBUG CMD: exec %s%s\n' "${quoted_script}" "${restart_args}" >&2
         eval "exec ${quoted_script}${restart_args}"
     fi
     if command -v sh >/dev/null 2>&1; then
-        printf 'DEBUG CMD: exec %s%s\n' "${quoted_script}" "${restart_args}" >&2
         eval "exec sh ${quoted_script}${restart_args}"
     fi
 
