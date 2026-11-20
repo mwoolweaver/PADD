@@ -715,6 +715,7 @@ GetNetworkInformation() {
         iface_name="N/A"
         pi_ip4_addr="N/A"
         pi_ip6_addr="N/A"
+        gw_v4_addr="N/A"
         ipv6_status="N/A"
         ipv6_heatmap=${reset_text}
         ipv6_check_box=${check_box_question}
@@ -762,6 +763,12 @@ GetNetworkInformation() {
     elif [ "${pi_ip4_addrs}" -gt 1 ]; then
         # More than one IPv4 address available
         pi_ip4_addr="${pi_ip4_addr}+"
+    fi
+
+    # Get IPv4 default gateway
+    GetPADDValue iface.v4.gw_addr gw_v4_addr
+    if [ -z "${gw_v4_addr}" ] || [ "${gw_v4_addr}" = "null" ]; then
+        gw_v4_addr="N/A"
     fi
 
     # Get IPv6 address of the default interface
@@ -1502,7 +1509,7 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-9s %-10s${ftl_cpu_heatmap}%-9s${reset_text} %-10s${ftl_mem_heatmap}%-9s${reset_text} %-10s%-9s${clear_line}\n" "PID:" "${ftlPID}" "CPU Use:" "${ftl_cpu}" "Mem. Use:" "${ftl_mem_percentage}" "Qrs/min:" "${dns_queries_frequency}"
         moveXOffset; printf " %-10s%-69s${clear_line}\n" "DNSCache:" "${cache_inserts} insertions, ${cache_evictions} deletions, ${cache_size} total entries"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}NETWORK ========================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-19s${clear_line}\n" "Hostname:" "${full_hostname}"
+        moveXOffset; printf " %-10s%-15s %-10s%-19s${clear_line}\n" "Hostname:" "${full_hostname}" "Gateway:" "${gw_v4_addr}"
         moveXOffset; printf " %-10s%-15s %-4s%-9s %-4s%-9s${clear_line}\n" "Interfce:" "${iface_name}" "TX:" "${tx_bytes}" "RX:" "${rx_bytes}"
         moveXOffset; printf " %-6s%-19s %-10s%-29s${clear_line}\n" "IPv4:" "${pi_ip4_addr}" "IPv6:" "${pi_ip6_addr}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS ==========================DHCP==============================================${reset_text}"
