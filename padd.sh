@@ -1535,7 +1535,7 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-39s${clear_line}\n" "Top Dmn:" "${top_domain}"
         moveXOffset; printf " %-10s%-39s${clear_line}\n" "Top Clnt:" "${top_client}"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}FTL ============================================================================${reset_text}"
-        moveXOffset; printf " %-10s%-9s %-10s${ftl_cpu_heatmap}%-9s${reset_text} %-10s${ftl_mem_heatmap}%-9s${reset_text} %-10s%-9s${clear_line}\n" "PID:" "${ftlPID}" "CPU Use:" "${ftl_cpu}" "Mem. Use:" "${ftl_mem_percentage}" "Qrs/min:" "${dns_queries_frequency}"
+        moveXOffset; printf " %-10s%-9s %-10s${ftl_cpu_heatmap}%-9s${reset_text} %-10s${ftl_mem_heatmap}%-9s${reset_text} %-10s%-9s${clear_line}\n" "PID:" "${ftlPID}" "CPU Use:" "${ftl_cpu}" "Mem. Use:" "${ftl_mem_percentage}" "${dns_query_rate_label}" "${dns_queries_frequency}"
         moveXOffset; printf " %-10s%-69s${clear_line}\n" "DNSCache:" "${cache_inserts} insertions, ${cache_evictions} deletions, ${cache_size} total entries"
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}NETWORK ========================================================================${reset_text}"
         moveXOffset; printf " %-10s%-15s %-10s%-19s${clear_line}\n" "Hostname:" "${full_hostname}" "Gateway:" "${gw_v4_addr}"
