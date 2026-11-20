@@ -2138,7 +2138,7 @@ StartupRoutine(){
 
         moveXOffset; printf "%b" " [■·········]  10%\r"
 
-        # Request PADD data
+        # Request data
         GetPADDData
 
         # Check for updates
@@ -2213,6 +2213,7 @@ StartupRoutine(){
         # Request PADD data
         moveXOffset; echo "- Requesting PADD information..."
         GetPADDData
+        GetLatestDomain
 
         # Get our information for the first time
         moveXOffset; echo "- Gathering version information..."
@@ -2290,16 +2291,19 @@ NormalPADD() {
     # Request PADD data after 30 seconds or if the connection was lost
     if [ $((now - LastCheckFullInformation)) -ge 30 ] || [ "${connection_down_flag}" = true ] ; then
         GetPADDData
+        GetLatestDomain
         LastCheckFullInformation="${now}"
     else
         # Request only a subset of the data
         GetPADDData "?full=false"
+        GetLatestDomain
     fi
 
     # If the session has expired, log in again and fetch the data once more
     if [ "${padd_data}" = "401" ]; then
         if Authenticate; then
             GetPADDData
+            GetLatestDomain
         fi
     fi
 
