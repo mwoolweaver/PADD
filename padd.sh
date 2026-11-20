@@ -2327,7 +2327,7 @@ NormalPADD() {
 }
 
 Update() {
-    local padd_script_path repo_dir
+    local padd_script_path repo_dir target_script
 
     if ! command -v git >/dev/null 2>&1; then
         echo "${check_box_bad} 'git' is required for --update on this fork."
@@ -2343,13 +2343,31 @@ Update() {
     fi
 
     echo "${check_box_info} Pulling updates in ${repo_dir}..."
-    if git -C "${repo_dir}" pull; then
-        echo "${check_box_good} Repository updated. Restart PADD for changes to take effect."
-        exit 0
-    else
+    if ! git -C "${repo_dir}" pull; then
         echo "${check_box_bad} 'git pull' failed."
         exit 1
     fi
+
+    target_script="${repo_dir}/padd.sh"
+    if ! sh -n "${target_script}" >/dev/null 2>&1; then
+        echo "${check_box_bad} Syntax check failed on ${target_script}; aborting automatic restart."
+        exit 1
+    fi
+    if command -v dash >/dev/null 2>&1 && ! dash -n "${target_script}" >/dev/null 2>&1; then
+        echo "${check_box_bad} dash syntax check failed on ${target_script}; aborting automatic restart."
+        exit 1
+    fi
+
+    echo "${check_box_good} Repository updated and verified. Restarting PADD..."
+    if [ -x "${target_script}" ]; then
+        eval "exec \"${target_script}\"${restart_args}"
+    fi
+    if command -v sh >/dev/null 2>&1; then
+        eval "exec sh \"${target_script}\"${restart_args}"
+    fi
+
+    echo "${check_box_bad} Could not automatically restart PADD. Please run ${target_script} manually."
+    exit 1
 }
 
 DisplayHelp() {
@@ -2457,6 +2475,36 @@ main(){
     # Run PADD
     NormalPADD
 }
+
+# Preserve original CLI args (excluding -u/--update) so Update() can restart cleanly
+# using pure POSIX parameter expansion (no sed or external subshells)
+restart_args=""
+_sq="'"
+_q="'\\''"
+
+for _arg in "$@"; do
+    case "${_arg}" in
+        -u|--update) ;;
+        *)
+            _rem="${_arg}"
+            _quoted=""
+            while :; do
+                case "${_rem}" in
+                    *"${_sq}"*)
+                        _quoted="${_quoted}${_rem%%"${_sq}"*}${_q}"
+                        _rem="${_rem#*"${_sq}"}"
+                        ;;
+                    *)
+                        _quoted="${_quoted}${_rem}"
+                        break
+                        ;;
+                esac
+            done
+            restart_args="${restart_args} '${_quoted}'"
+            ;;
+    esac
+done
+unset _arg _rem _quoted _sq _q
 
 # Process CLI options; value-taking flags are guarded against missing args ($# -ge 2),
 # and --xoff/--yoff reject empty or non-numeric values via case matching.
