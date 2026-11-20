@@ -982,7 +982,7 @@ CompareMasterVersion() {
 }
 
 GetVersionInformation() {
-    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION
+    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION CORE_VERSION_raw FTL_VERSION_raw
     if [ "${connection_down_flag}" = true ]; then
         DOCKER_VERSION=null
         CORE_VERSION="N/A"
