@@ -11,8 +11,19 @@
 # Please see LICENSE file for your rights under this license.
 
 # SETS LOCALE
-export LC_ALL=C
+# Keep LC_NUMERIC=C so awk/printf always use '.' for decimals, while preserving
+# or selecting a UTF-8 LC_CTYPE for multi-byte glyphs (■, ·, °, ✓, ✗) without forking.
 export LC_NUMERIC=C
+unset LC_ALL
+
+case "${LC_CTYPE:-${LANG:-}}" in
+    *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*)
+        export LC_CTYPE="${LC_CTYPE:-${LANG}}"
+        ;;
+    *)
+        export LC_CTYPE="C.UTF-8"
+        ;;
+esac
 
 ############################################ VARIABLES #############################################
 
