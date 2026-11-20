@@ -2148,7 +2148,6 @@ EOM
 
 # Called on signals INT QUIT TERM
 sig_cleanup() {
-    local err
     # save error code (130 for SIGINT, 143 for SIGTERM, 131 for SIGQUIT)
     err=$?
 
