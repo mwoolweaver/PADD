@@ -1666,9 +1666,9 @@ PrintDashboard() {
         moveXOffset; printf "%s${clear_line}\n" ""
         moveXOffset; printf "%s${clear_line}\n" "${bold_text}SYSTEM =============================================================================================${reset_text}"
         moveXOffset; printf " %-32s%-32s%-10s[${memory_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "Device: ${sys_model_short}" "RAM: ${memory_used_total}" "Memory:" "${memory_bar}" "${memory_percent}%"
-        moveXOffset; printf " %-64s%-10s[${swap_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "Uptime: ${system_uptime}" "Swap:" "${swap_bar}" "${swap_percent}%"
+        moveXOffset; printf " %-32s%-32s%-10s[${swap_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "Procs: ${sys_procs}" "Cores: ${sys_cores}" "Swap:" "${swap_bar}" "${swap_percent}%"
         moveXOffset; printf " %-10s${temp_heatmap}%-""${temp_padding}""s${reset_text}%-10s${cpu_load_1_heatmap}%-4s${reset_text}, ${cpu_load_5_heatmap}%-4s${reset_text}, ${cpu_load_15_heatmap}%-10s${reset_text}%-10s[${cpu_percent_heatmap}%-15s${reset_text}] %-6s${clear_line}\n" "CPU Temp:" "${temperature}" "CPU Load:" "${cpu_load_1}" "${cpu_load_5}" "${cpu_load_15}" "CPU %:" "${cpu_bar}" "${cpu_percent}%"
-        moveXOffset; printf " %-32s%-32s${clear_line}" "Procs: ${sys_procs}" "Cores: ${sys_cores}"
+        moveXOffset; printf " %s${clear_line}" "Uptime: ${system_uptime}"
     fi
 
     # Clear to end of screen (below the drawn dashboard)
