@@ -1816,14 +1816,14 @@ BarGenerator() {
 
 # Checks the size of the screen and sets `padd_size`, `xOffset`, and `yOffset`
 SizeChecker(){
-    local console_width console_height width height xMaxOffset yMaxOffset
+    local console_width console_height width height xMaxOffset yMaxOffset entry name rest
     # Adding a tiny delay here to give the kernel a bit of time to
     # report new sizes correctly after a terminal resize;
     # this reduces flickering of GenerateSizeDependentOutput() items
     sleep 0.1
     console_width=$(tput cols)
     console_height=$(tput lines)
-
+ 
     # Fall back cleanly to "ants" if tput returns empty or non-numeric dimensions
     # so integer -ge comparisons and offset math never fail on non-TTY/missing size.
     case "${console_width}" in
@@ -1842,68 +1842,35 @@ SizeChecker(){
             return
             ;;
     esac
-
-    # Ultra
-    if [ "${console_width}" -ge "100" ] && [ "${console_height}" -ge "32" ]; then
-        padd_size="ultra"
-        width=100
-        height=32
-    # Below Ultra. Gives you Mega.
-    elif [ "${console_width}" -ge "80" ] && [ "${console_height}" -ge "26" ]; then
-        padd_size="mega"
-        width=80
-        height=26
-    # Below Mega. Gives you Regular.
-    elif [ "${console_width}" -ge "60" ] && [ "${console_height}" -ge "22" ]; then
-        padd_size="regular"
-        width=60
-        height=22
-    # Below Regular. Gives you Slim.
-    elif [ "${console_width}" -ge "60" ] && [ "${console_height}" -ge "21" ]; then
-        padd_size="slim"
-        width=60
-        height=21
-    # Below Slim. Gives you Tiny.
-    elif [ "${console_width}" -ge "53" ] && [ "${console_height}" -ge "20" ]; then
-        padd_size="tiny"
-        width=53
-        height=20
-    # Below Tiny. Gives you Mini.
-    elif [ "${console_width}" -ge "40" ] && [ "${console_height}" -ge "18" ]; then
-        padd_size="mini"
-        width=40
-        height=18
-    # Below Mini. Gives you Micro.
-    elif [ "${console_width}" -ge "30" ] && [ "${console_height}" -ge "16" ]; then
-        padd_size="micro"
-        width=30
-        height=16
-    # Below Micro, Gives you Nano.
-    elif [ "${console_width}" -ge "24" ] && [ "${console_height}" -ge "12" ]; then
-        padd_size="nano"
-        width=24
-        height=12
-    # Below Nano. Gives you Pico.
-    elif [ "${console_width}" -ge "20" ] && [ "${console_height}" -ge "10" ]; then
-        padd_size="pico"
-        width=20
-        height=10
-    # Below Pico. Gives you nothing...
-    else
-        padd_size="ants"
+ 
+    # Sizes, largest first, as name:minimum_width:minimum_height.
+    # The first entry that fits the terminal wins; if none fits, the screen is "ants".
+    padd_size="ants"
+    for entry in ultra:100:32 mega:80:26 regular:60:22 slim:60:21 tiny:53:20 mini:40:18 micro:30:16 nano:24:12 pico:20:10; do
+        name=${entry%%:*}
+        rest=${entry#*:}
+        width=${rest%%:*}
+        height=${rest#*:}
+        if [ "${console_width}" -ge "${width}" ] && [ "${console_height}" -ge "${height}" ]; then
+            padd_size=${name}
+            break
+        fi
+    done
+ 
+    if [ "${padd_size}" = "ants" ]; then
         xOffset=0
         yOffset=0
         return
     fi
-
+ 
     # Center the output (default position)
     xOffset="$(( (console_width - width) / 2 ))"
     yOffset="$(( (console_height - height) / 2 ))"
-
+ 
     # If the user sets an offset option, use it.
     if [ -n "${xOffOrig}" ]; then
         xOffset=${xOffOrig}
-
+ 
         # Limit the offset to avoid breaks
         xMaxOffset=$((console_width - width))
         if [ "${xMaxOffset}" -lt 0 ]; then
@@ -1915,7 +1882,7 @@ SizeChecker(){
     fi
     if [ -n "${yOffOrig}" ]; then
         yOffset=${yOffOrig}
-
+ 
         # Limit the offset to avoid breaks
         yMaxOffset=$((console_height - height))
         if [ "${yMaxOffset}" -lt 0 ]; then
