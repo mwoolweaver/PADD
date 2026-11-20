@@ -2588,34 +2588,18 @@ main(){
 }
 
 # Preserve original CLI args (excluding -u/--update) so Update() can restart cleanly
-# using pure POSIX parameter expansion (no sed or external subshells)
+# using QuoteShellArg with zero subshells or external forks.
 restart_args=""
-_sq="'"
-_q="'\\''"
-
 for _arg in "$@"; do
     case "${_arg}" in
         -u|--update) ;;
         *)
-            _rem="${_arg}"
-            _quoted=""
-            while :; do
-                case "${_rem}" in
-                    *"${_sq}"*)
-                        _quoted="${_quoted}${_rem%%"${_sq}"*}${_q}"
-                        _rem="${_rem#*"${_sq}"}"
-                        ;;
-                    *)
-                        _quoted="${_quoted}${_rem}"
-                        break
-                        ;;
-                esac
-            done
-            restart_args="${restart_args} '${_quoted}'"
+            QuoteShellArg "${_arg}" _quoted
+            restart_args="${restart_args} ${_quoted}"
             ;;
     esac
 done
-unset _arg _rem _quoted _sq _q
+unset _arg _quoted
 
 # Process CLI options; value-taking flags are guarded against missing args ($# -ge 2),
 # and --xoff/--yoff reject empty or non-numeric values via case matching.
