@@ -1871,6 +1871,25 @@ SizeChecker(){
     console_width=$(tput cols)
     console_height=$(tput lines)
 
+    # Fall back cleanly to "ants" if tput returns empty or non-numeric dimensions
+    # so integer -ge comparisons and offset math never fail on non-TTY/missing size.
+    case "${console_width}" in
+        ''|*[!0-9]*)
+            padd_size="ants"
+            xOffset=0
+            yOffset=0
+            return
+            ;;
+    esac
+    case "${console_height}" in
+        ''|*[!0-9]*)
+            padd_size="ants"
+            xOffset=0
+            yOffset=0
+            return
+            ;;
+    esac
+
     # Ultra
     if [ "${console_width}" -ge "100" ] && [ "${console_height}" -ge "32" ]; then
         padd_size="ultra"
