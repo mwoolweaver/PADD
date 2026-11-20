@@ -855,13 +855,13 @@ GetNetworkInformation() {
     GetPADDValue iface.v4.tx_bytes.unit tx_bytes_unit
     if [ -z "${tx_bytes_raw}" ] || [ "${tx_bytes_raw}" = "null" ]; then tx_bytes_raw=0; fi
     if [ -z "${tx_bytes_unit}" ] || [ "${tx_bytes_unit}" = "null" ]; then tx_bytes_unit=""; fi
-    tx_bytes=$(printf "%.1f %b" "${tx_bytes_raw}" "${tx_bytes_unit}")
+    tx_bytes=$(printf "%.1f %s" "${tx_bytes_raw}" "${tx_bytes_unit}")
 
     GetPADDValue iface.v4.rx_bytes.value rx_bytes_raw
     GetPADDValue iface.v4.rx_bytes.unit rx_bytes_unit
     if [ -z "${rx_bytes_raw}" ] || [ "${rx_bytes_raw}" = "null" ]; then rx_bytes_raw=0; fi
     if [ -z "${rx_bytes_unit}" ] || [ "${rx_bytes_unit}" = "null" ]; then rx_bytes_unit=""; fi
-    rx_bytes=$(printf "%.1f %b" "${rx_bytes_raw}" "${rx_bytes_unit}")
+    rx_bytes=$(printf "%.1f %s" "${rx_bytes_raw}" "${rx_bytes_unit}")
 
     # If IPv4 and IPv6 interfaces are not the same, add a "*" to the interface
     # name to highlight that there are two different interfaces and the
@@ -1627,6 +1627,9 @@ SizeChecker(){
     # Below Pico. Gives you nothing...
     else
         padd_size="ants"
+        xOffset=0
+        yOffset=0
+        return
     fi
 
     # Center the output (default position)
@@ -2028,7 +2031,7 @@ NormalPADD() {
     # saving the PID of the background sleep process to kill it on exit and resize
     sleep 5 &
     sleepPID=$!
-    wait $!
+    wait "${sleepPID}"
 
     # Start getting our information for next round
     now=$(date +%s)
@@ -2077,7 +2080,7 @@ NormalPADD() {
         # Get PADD version information every 24hours
         if [ $((now - LastCheckPADDInformation)) -ge 86400 ]; then
             GetPADDInformation
-            LastCheckPADDInformation=$(date +%s)
+            LastCheckPADDInformation="${now}"
         fi
     fi
 
