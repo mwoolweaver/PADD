@@ -2191,9 +2191,6 @@ NormalPADD() {
 
     while true; do
 
-    # Generate layout-dependent output (bars, truncated strings, uptime formatting)
-    GenerateSizeDependentOutput "${padd_size}"
-
     # Sets the message displayed in the "status field" depending on the set flags
     if [ "${padd_size}" != "ants" ]; then
         GenerateSizeDependentOutput "${padd_size}"
