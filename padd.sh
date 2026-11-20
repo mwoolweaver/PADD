@@ -529,7 +529,14 @@ GetSummaryInformation() {
     dns_queries_today=$(printf "%.f" "${dns_queries_today_raw}")
     ads_blocked_today=$(printf "%.f" "${ads_blocked_today_raw}")
     ads_percentage_today=$(printf "%.1f" "${ads_percentage_today_raw}")
-    if [ "${dns_queries_frequency}" -gt 75 ]; then
+    
+    dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN {
+        val = sprintf("%.f", f * 60)
+        if (val == "-0") val = "0"
+        print val
+    }')
+
+    if awk -v q="${dns_queries_frequency}" 'BEGIN { exit !((q + 0) > 75) }'; then
         dns_query_rate_label="Qrs/sec:"
         dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN { printf "%.1f\n", f }')
     else
