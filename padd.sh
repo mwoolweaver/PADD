@@ -1703,7 +1703,7 @@ PrintDashboard() {
         moveXOffset; printf " %-10s%-29s%-10s[%s] %-5s${clear_line}\n" "Blocking:" "${domains_being_blocked} domains" "Piholed:" "${ads_blocked_bar}" "${ads_percentage_today}%"
         moveXOffset; printf " %-10s%-39s%-34s%s %s${clear_line}\n" "Clients:" "${clients}" "${ads_blocked_today} out of ${dns_queries_today} queries" "${dns_query_rate_label}" "${dns_queries_frequency}"
         moveXOffset; printf " %-15s%s${clear_line}\n" "Latest Domain:" "${latest_domain}"
-        moveXOffset; printf " %-10s%s${clear_line}\n" "Latest Ad:" "${latest_blocked}"
+        moveXOffset; printf " %-15s%s${clear_line}\n" "Latest Ad:" "${latest_blocked}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Ad:" "${top_blocked}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Dmn:" "${top_domain}"
         moveXOffset; printf " %-10s%s${clear_line}\n" "Top Clnt:" "${top_client}"
