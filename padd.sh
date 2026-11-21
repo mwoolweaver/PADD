@@ -1730,32 +1730,76 @@ PrintDashboard() {
 ############################################# HELPERS ##############################################
 
 # Sets global `heat_out` to a color based on a percentage (1 arg) or ratio (2 args)
-# Uses a global output variable instead of stdout to avoid subshell forks.
+# Uses fixed-point POSIX integer math and a global output variable (zero subshells/forks).
 HeatmapGenerator () {
-    local load out
-    # if one number is provided, just use that percentage to figure out the colors
-    if [ -z "${2}" ]; then
-        load=$(printf "%.0f" "${1}")
-    # guard against division by zero if core_count is 0
-    elif [ "${2}" = "0" ]; then
-        load=0
-    # if two numbers are provided, do some math to make a percentage to figure out the colors
-    else
-        load=$(awk -v a="${1}" -v b="${2}" 'BEGIN { printf "%.0f\n", (a / b) * 100 }')
-    fi
+    local int_part frac_part frac_tail denom scaled load
+
+    # Negative inputs are always below 75%
+    case "$1" in
+        -*)
+            heat_out="${green_text}"
+            return
+            ;;
+        *.*)
+            int_part=${1%%.*}
+            frac_part=${1#*.}
+            ;;
+        *)
+            int_part=$1
+            frac_part=""
+            ;;
+    esac
+
+    # Pad and slice fractional part to exactly 2 digits in-process (e.g. "" -> 00, "5" -> 50, "08" -> 08)
+    frac_part="${frac_part}00"
+    frac_tail=${frac_part#??}
+    frac_part=${frac_part%"${frac_tail}"}
+
+    # Strip leading zeros so $((...)) never treats 08/09 as invalid octal
+    frac_part=${frac_part#0}
+    while :; do
+        case "${int_part}" in
+            0?*) int_part=${int_part#0} ;;
+            *)   break ;;
+        esac
+    done
+    int_part=${int_part:-0}
+
+    # Default denominator to 100 for single-arg percentage calls; unify 1-arg and 2-arg math
+    denom=${2:-100}
+    while :; do
+        case "${denom}" in
+            0?*) denom=${denom#0} ;;
+            *)   break ;;
+        esac
+    done
+
+    # Guard against non-numeric inputs or division by zero (e.g. core_count=0)
+    case "${int_part}${frac_part}${denom}" in
+        ''|*[!0-9]*)
+            load=0
+            ;;
+        *)
+            if [ "${denom}" -eq 0 ]; then
+                load=0
+            else
+                scaled=$((int_part * 100 + frac_part))
+                # Round (scaled / denom) to nearest integer (round-half-up)
+                load=$(((2 * scaled + denom) / (2 * denom)))
+            fi
+            ;;
+    esac
 
     # Color logic
     #  |<-                 green                  ->| yellow |  red ->
     #  0  5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100
     if [ "${load}" -lt 75 ]; then
-        out=${green_text}
+        heat_out=${green_text}
     elif [ "${load}" -lt 90 ]; then
-        out=${yellow_text}
+        heat_out=${yellow_text}
     else
-        out=${red_text}
+        heat_out=${red_text}
     fi
-
-    heat_out="${out}"
 }
 
 # Sets global `bar_out` to a progress bar string without a subshell capture.
