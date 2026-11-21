@@ -2019,7 +2019,7 @@ check_dependencies() {
     hasDeps=true
     for dep in curl jq dig tput; do
         if ! command -v "${dep}" >/dev/null 2>&1; then
-            printf "%b" "${check_box_bad} Error!\n    '%s' is missing but required.\n" "${dep}"
+            printf "%s Error!\n    '%s' is missing but required.\n" "${check_box_bad}" "${dep}"
             hasDeps=false
         fi
     done
@@ -2142,7 +2142,9 @@ StartupRoutine() {
             # Request PADD data
             moveXOffset; echo "- Requesting PADD information..."
             GetPADDData
-            GetLatestDomain
+            if [ "$1" = "ultra" ]; then
+                GetLatestDomain
+            fi
 
             # Get our information for the first time
             moveXOffset; echo "- Gathering version information..."
@@ -2253,8 +2255,10 @@ NormalPADD() {
         GetSystemInformation
         GetSummaryInformation
         GetPiholeInformation
-        # Only query /queries?length=1 once FTL is healthy and privacy/status fields are ready
-        GetLatestDomain
+        # Only query /queries?length=1 in ultra layout once FTL is healthy
+        if [ "${padd_size}" = "ultra" ]; then
+            GetLatestDomain
+        fi
 
         if [ $((now - LastCheckNetworkInformation)) -ge 30 ] || [ "${get_network_information_required}" = true ]; then
             GetNetworkInformation
@@ -2451,6 +2455,9 @@ main(){
 
     # Run SizeChecker again to account for resizing during startup
     SizeChecker
+    if [ "${padd_size}" = "ultra" ] && [ -z "${latest_domain}" ]; then
+        GetLatestDomain
+    fi
 
     # Run PADD
     NormalPADD
