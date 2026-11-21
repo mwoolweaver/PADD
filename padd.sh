@@ -526,7 +526,7 @@ GetPADDValue() {
 }
 
 GetSummaryInformation() {
-    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level f_int f_frac f_tail f4 per_min_val r10
+    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level f2 per_min_val r10
     if [ "${connection_down_flag}" = true ]; then
         clients="N/A"
         blocking_enabled="N/A"
@@ -570,52 +570,20 @@ GetSummaryInformation() {
     # Compute label and formatted rate in-process (zero awk forks)
     case "${dns_queries_frequency_raw}" in
         -*|*[Ee]-*)
-            f4=0
+            f2=0
             ;;
         *)
-            case "${dns_queries_frequency_raw}" in
-                *.*)
-                    f_int="${dns_queries_frequency_raw%%.*}"
-                    f_frac="${dns_queries_frequency_raw#*.}"
-                    ;;
-                *)
-                    f_int="${dns_queries_frequency_raw}"
-                    f_frac=""
-                    ;;
-            esac
-            case "${f_int}${f_frac}" in
-                ''|*[!0-9]*)
-                    f4=0
-                    ;;
-                *)
-                    f_frac="${f_frac}0000"
-                    f_tail="${f_frac#????}"
-                    f_frac="${f_frac%"${f_tail}"}"
-                    while :; do
-                        case "${f_frac}" in
-                            0?*) f_frac="${f_frac#0}" ;;
-                            *)   break ;;
-                        esac
-                    done
-                    while :; do
-                        case "${f_int}" in
-                            0?*) f_int="${f_int#0}" ;;
-                            *)   break ;;
-                        esac
-                    done
-                    f4=$((${f_int:-0} * 10000 + ${f_frac:-0}))
-                    ;;
-            esac
+            ParseFixed100 "${dns_queries_frequency_raw}" f2
             ;;
     esac
 
-    per_min_val=$(((f4 * 60 + 5000) / 10000))
+    per_min_val=$(((f2 * 60 + 50) / 100))
     if [ "${per_min_val}" -gt 100 ]; then
         dns_query_rate_label="Qrs/sec:"
-        if [ "${f4}" -gt 100000 ]; then
-            dns_queries_frequency=$(((f4 + 5000) / 10000))
+        if [ "${f2}" -gt 1000 ]; then
+            dns_queries_frequency=$(((f2 + 50) / 100))
         else
-            r10=$(((f4 + 500) / 1000))
+            r10=$(((f2 + 5) / 10))
             dns_queries_frequency="$((r10 / 10)).$((r10 % 10))"
         fi
     else
@@ -709,12 +677,8 @@ GetSystemInformation() {
                     t_frac="0"
                     ;;
             esac
-            while :; do
-                case "${t_int}" in
-                    0?*) t_int="${t_int#0}" ;;
-                    *)   break ;;
-                esac
-            done
+            StripLeadingZeros "${t_int}" t_int
+
             case "${t_int}${t_frac}" in
                 ''|*[!0-9]*) t10="" ;;
                 *)           t10=$((t_sign * (${t_int:-0} * 10 + ${t_frac:-0}))) ;;
@@ -1601,6 +1565,22 @@ PrintDashboard() {
 
 ############################################# HELPERS ##############################################
 
+# Strips leading zeros from a numeric string (e.g. "007" -> "7", "0" -> "0", "" -> "")
+# and assigns it to target variable $2 without subshells or external forks.
+# Usage: StripLeadingZeros <value> <out_var>
+StripLeadingZeros() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _s
+    _s="$1"
+    while :; do
+        case "${_s}" in
+            0?*) _s="${_s#0}" ;;
+            *)   break ;;
+        esac
+    done
+    eval "$2=\${_s}"
+}
+
 # Formats a KiB value as "%.1fG" (>= 1 GiB) or "%.0fM" (< 1 GiB) and assigns
 # it to target variable $2 without subshells or external forks.
 # Usage: FormatMemKiB <kib_value> <out_var>
@@ -1608,12 +1588,8 @@ FormatMemKiB() {
     case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
     local _k _t _out
     _k="${1%%.*}"
-    while :; do
-        case "${_k}" in
-            0?*) _k="${_k#0}" ;;
-            *)   break ;;
-        esac
-    done
+    StripLeadingZeros "${_k}" _k
+
     case "${_k}" in
         ''|*[!0-9]*)
             _out="N/A"
@@ -1686,12 +1662,8 @@ ParseFixed100() {
 
                     # Strip leading zeros so $((...)) never treats 08/09 as invalid octal
                     _frac=${_frac#0}
-                    while :; do
-                        case "${_int}" in
-                            0?*) _int=${_int#0} ;;
-                            *)   break ;;
-                        esac
-                    done
+                    StripLeadingZeros "${_int}" _int
+                    _int=${_int:-0}
                     _int=${_int:-0}
                     _scaled=$((_int * 100 + _frac))
                     ;;
@@ -1704,19 +1676,14 @@ ParseFixed100() {
 
 # Sets global `heat_out` to a color based on a percentage (1 arg) or ratio (2 args)
 # Uses fixed-point POSIX integer math and a global output variable (zero subshells/forks).
-HeatmapGenerator () {
+HeatmapGenerator() {
     local scaled denom load
 
     ParseFixed100 "$1" scaled
 
     # Default denominator to 100 for single-arg percentage calls; unify 1-arg and 2-arg math
     denom=${2:-100}
-    while :; do
-        case "${denom}" in
-            0?*) denom=${denom#0} ;;
-            *)   break ;;
-        esac
-    done
+    StripLeadingZeros "${denom}" denom
 
     case "${denom}" in
         ''|*[!0-9]*)
@@ -1754,12 +1721,8 @@ BarGenerator() {
     ParseFixed100 "$1" scaled
 
     width=${2:-0}
-    while :; do
-        case "${width}" in
-            0?*) width=${width#0} ;;
-            *)   break ;;
-        esac
-    done
+    StripLeadingZeros "${width}" width
+
     case "${width}" in
         ''|*[!0-9]*) width=0 ;;
     esac
@@ -1940,12 +1903,8 @@ VersionConverter() {
                 [0-9]) _part="${_part}${_ch}" ;;
             esac
         done
-        while :; do
-            case "${_part}" in
-                0?*) _part=${_part#0} ;;
-                *)   break ;;
-            esac
-        done
+        StripLeadingZeros "${_part}" _part
+        
         _num=${_part:-0}
 
         if [ "${_idx}" -eq 0 ]; then
@@ -1962,12 +1921,7 @@ VersionConverter() {
     done
 
     # Strip leading zeros on the final combined value so [ -lt ] stays safe
-    while :; do
-        case "${_result}" in
-            0?*) _result=${_result#0} ;;
-            *)   break ;;
-        esac
-    done
+    StripLeadingZeros "${_result}" _result
     _result=${_result:-0}
 
     eval "$2=\${_result}"
