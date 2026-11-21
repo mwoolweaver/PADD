@@ -526,7 +526,7 @@ GetPADDValue() {
 }
 
 GetSummaryInformation() {
-    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level freq_parsed nl
+    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level f_int f_frac f_tail f4 per_min_val r10
     if [ "${connection_down_flag}" = true ]; then
         clients="N/A"
         blocking_enabled="N/A"
@@ -567,23 +567,68 @@ GetSummaryInformation() {
     ads_blocked_today=$(printf "%.f" "${ads_blocked_today_raw}")
     ads_percentage_today=$(printf "%.1f" "${ads_percentage_today_raw}")
 
-    # Compute label and formatted rate in a single awk invocation, then split via POSIX parameter expansion
-    freq_parsed=$(awk -v f="${dns_queries_frequency_raw}" '
-    function fmt(x) {
-        if (x > 10) return sprintf("%.0f", x)
-        if (x < 1)  return sprintf("%.2f", x)
-        return sprintf("%.1f", x)
-    }
-    BEGIN {
-        raw = f + 0
-        per_min_val = sprintf("%.f", raw * 60)
-        if (per_min_val == "-0") per_min_val = "0"
-        if ((per_min_val + 0) > 100) {
-            printf "Qrs/sec:\n%s\n", fmt(raw)
-        } else {
-            printf "Qrs/min:\n%s\n", fmt(per_min_val + 0)
-        }
-    }')
+    # Compute label and formatted rate in-process (zero awk forks)
+    case "${dns_queries_frequency_raw}" in
+        -*|*[Ee]-*)
+            f4=0
+            ;;
+        *)
+            case "${dns_queries_frequency_raw}" in
+                *.*)
+                    f_int="${dns_queries_frequency_raw%%.*}"
+                    f_frac="${dns_queries_frequency_raw#*.}"
+                    ;;
+                *)
+                    f_int="${dns_queries_frequency_raw}"
+                    f_frac=""
+                    ;;
+            esac
+            case "${f_int}${f_frac}" in
+                ''|*[!0-9]*)
+                    f4=0
+                    ;;
+                *)
+                    f_frac="${f_frac}0000"
+                    f_tail="${f_frac#????}"
+                    f_frac="${f_frac%"${f_tail}"}"
+                    while :; do
+                        case "${f_frac}" in
+                            0?*) f_frac="${f_frac#0}" ;;
+                            *)   break ;;
+                        esac
+                    done
+                    while :; do
+                        case "${f_int}" in
+                            0?*) f_int="${f_int#0}" ;;
+                            *)   break ;;
+                        esac
+                    done
+                    f4=$((${f_int:-0} * 10000 + ${f_frac:-0}))
+                    ;;
+            esac
+            ;;
+    esac
+
+    per_min_val=$(((f4 * 60 + 5000) / 10000))
+    if [ "${per_min_val}" -gt 100 ]; then
+        dns_query_rate_label="Qrs/sec:"
+        if [ "${f4}" -gt 100000 ]; then
+            dns_queries_frequency=$(((f4 + 5000) / 10000))
+        else
+            r10=$(((f4 + 500) / 1000))
+            dns_queries_frequency="$((r10 / 10)).$((r10 % 10))"
+        fi
+    else
+        dns_query_rate_label="Qrs/min:"
+        if [ "${per_min_val}" -gt 10 ]; then
+            dns_queries_frequency="${per_min_val}"
+        elif [ "${per_min_val}" -lt 1 ]; then
+            dns_queries_frequency="0.00"
+        else
+            dns_queries_frequency="${per_min_val}.0"
+        fi
+    fi
+
     nl='
 '
     dns_query_rate_label=${freq_parsed%%"${nl}"*}
@@ -601,7 +646,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw memory_used_raw memory_total_raw swap_percent_raw
+    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw memory_used_raw memory_total_raw swap_percent_raw mem_used_fmt mem_total_fmt
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
@@ -643,26 +688,57 @@ GetSystemInformation() {
     fi
 
     # Temp + Unit
-    temp_conv=""
     cpu_temp_celsius=-274
     case "${temp_unit}" in
         C)
             temperature="${cpu_temp}°${temp_unit}"
             cpu_temp_celsius="${cpu_temp%%.*}"
+            if [ "${cpu_temp_celsius}" = "-0" ]; then
+                cpu_temp_celsius=0
+            fi
             temp_unicode=true
             ;;
-        F)
-            temperature="${cpu_temp}°${temp_unit}"
-            # convert to Celsius for limit checking
-            temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", (t - 32) * 5 / 9 }')"
-            temp_unicode=true
-            ;;
-        K)
-            # no ° for Kelvin
-            temperature="${cpu_temp}${temp_unit}"
-            # convert to Celsius for limit checking
-            temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", t - 273.15 }')"
-            temp_unicode=false
+        F|K)
+            t_sign=1
+            t_int="${cpu_temp}"
+            case "${t_int}" in
+                -*) t_sign=-1; t_int="${t_int#-}" ;;
+            esac
+            case "${t_int}" in
+                *.*)
+                    t_frac="${t_int#*.}"
+                    t_frac="${t_frac%"${t_frac#?}"}"
+                    t_int="${t_int%%.*}"
+                    ;;
+                *)
+                    t_frac="0"
+                    ;;
+            esac
+            while :; do
+                case "${t_int}" in
+                    0?*) t_int="${t_int#0}" ;;
+                    *)   break ;;
+                esac
+            done
+            case "${t_int}${t_frac}" in
+                ''|*[!0-9]*) t10="" ;;
+                *)           t10=$((t_sign * (${t_int:-0} * 10 + ${t_frac:-0}))) ;;
+            esac
+
+            if [ "${temp_unit}" = "F" ]; then
+                temperature="${cpu_temp}°${temp_unit}"
+                if [ -n "${t10}" ]; then
+                    cpu_temp_celsius=$(((t10 - 320) / 18))
+                fi
+                temp_unicode=true
+            else
+                # no ° for Kelvin
+                temperature="${cpu_temp}${temp_unit}"
+                if [ -n "${t10}" ]; then
+                    cpu_temp_celsius=$(((t10 * 10 - 27315) / 100))
+                fi
+                temp_unicode=false
+            fi
             ;;
         *) # unknown unit
             temperature="N/A"
@@ -740,11 +816,9 @@ GetSystemInformation() {
     GetPADDValue system.memory.ram.used memory_used_raw ""
     GetPADDValue system.memory.ram.total memory_total_raw ""
     if [ -n "${memory_used_raw}" ] && [ -n "${memory_total_raw}" ]; then
-        memory_used_total=$(awk -v u="${memory_used_raw}" -v t="${memory_total_raw}" 'BEGIN {
-            if (u >= 1048576) us = sprintf("%.1fG", u / 1048576); else us = sprintf("%.0fM", u / 1024);
-            if (t >= 1048576) ts = sprintf("%.1fG", t / 1048576); else ts = sprintf("%.0fM", t / 1024);
-            printf "%s/%s\n", us, ts
-        }')
+        FormatMemKiB "${memory_used_raw}" mem_used_fmt
+        FormatMemKiB "${memory_total_raw}" mem_total_fmt
+        memory_used_total="${mem_used_fmt}/${mem_total_fmt}"
     else
         memory_used_total="N/A"
     fi
@@ -756,21 +830,24 @@ GetSystemInformation() {
     HeatmapGenerator "${swap_percent}"
     swap_heatmap="${heat_out}"
 
-    # Get device model
-    GetPADDValue host_model sys_model
-
+    # Get device model (cached so filterModel's awk only forks when host_model changes)
     # DOCKER_VERSION is set during GetVersionInformation, so this needs to run first during startup
     if [ "${DOCKER_VERSION}" != "null" ]; then
-        # Docker image
         sys_model="Container"
-    fi
-
-    # Cleaning device model from useless OEM information
-    sys_model=$(filterModel "${sys_model}")
-
-    # FTL returns null if device information is not available
-    if [ -z "${sys_model}" ] || [ "${sys_model}" = "null" ]; then
-        sys_model="N/A"
+    else
+        GetPADDValue host_model sys_model ""
+        if [ -z "${sys_model}" ]; then
+            sys_model="N/A"
+        elif [ "${sys_model}" = "${_cached_host_model:-}" ] && [ -n "${_cached_sys_model:-}" ]; then
+            sys_model="${_cached_sys_model}"
+        else
+            _cached_host_model="${sys_model}"
+            sys_model=$(filterModel "${sys_model}")
+            if [ -z "${sys_model}" ]; then
+                sys_model="N/A"
+            fi
+            _cached_sys_model="${sys_model}"
+        fi
     fi
 }
 
@@ -1539,6 +1616,36 @@ PrintDashboard() {
 }
 
 ############################################# HELPERS ##############################################
+
+# Formats a KiB value as "%.1fG" (>= 1 GiB) or "%.0fM" (< 1 GiB) and assigns
+# it to target variable $2 without subshells or external forks.
+# Usage: FormatMemKiB <kib_value> <out_var>
+FormatMemKiB() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _k _t _out
+    _k="${1%%.*}"
+    while :; do
+        case "${_k}" in
+            0?*) _k="${_k#0}" ;;
+            *)   break ;;
+        esac
+    done
+    case "${_k}" in
+        ''|*[!0-9]*)
+            _out="N/A"
+            ;;
+        *)
+            if [ "${_k}" -ge 1048576 ]; then
+                _t=$(((_k * 10 + 524288) / 1048576))
+                _out="$((_t / 10)).$((_t % 10))G"
+            else
+                _out="$(((_k + 512) / 1024))M"
+            fi
+            ;;
+    esac
+    # shellcheck disable=SC2034
+    eval "$2=\${_out}"
+}
 
 # Assigns "Enabled"/${green_text} when $1 is "true", otherwise "Disabled"/${blue_text},
 # into target variables $2 and $3 without subshells or external forks.
