@@ -808,6 +808,9 @@ GetNetworkInformation() {
 
         tx_bytes="N/A"
         rx_bytes="N/A"
+
+        dns_port_display="N/A"
+        dns_domain_display="N/A"
         return
     fi
 
@@ -1143,7 +1146,7 @@ GetVersionInformation() {
 
     # Gather DOCKER version information...
     # returns "null" if not running Pi-hole in Docker container
-    GetPADDValue version.docker.local DOCKER_VERSION
+    GetPADDValue version.docker.local DOCKER_VERSION "null"
 
     # If PADD is running inside docker, immediately return without checking for updated component versions
     if [ "${DOCKER_VERSION}" != "null" ] ; then
@@ -1161,7 +1164,7 @@ GetVersionInformation() {
     ResolveComponentVersion "ftl" FTL_VERSION ftl_version_heatmap ultra_ftl
 
     # Web interface is optional (null when not installed)
-    GetPADDValue version.web.local.version WEB_VERSION
+    GetPADDValue version.web.local.version WEB_VERSION ""
     if [ "${WEB_VERSION}" != "null" ]; then
         ResolveComponentVersion "web" WEB_VERSION web_version_heatmap ultra_web
     else
@@ -1715,7 +1718,11 @@ BarGenerator() {
             bar_out="${frontFill}${reset_text}${backFill}"
         fi
     else
-        bar_out="${frontFill}${reset_text}"
+        if [ "$3" = "color" ]; then
+            bar_out="${red_text}${frontFill}${reset_text}"
+        else
+            bar_out="${frontFill}${reset_text}"
+        fi
     fi
 }
 
