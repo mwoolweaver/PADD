@@ -1165,7 +1165,7 @@ GetVersionInformation() {
 
     # Web interface is optional (null when not installed)
     GetPADDValue version.web.local.version WEB_VERSION ""
-    if [ "${WEB_VERSION}" != "null" ]; then
+    if [ -n "${WEB_VERSION}" ]; then
         ResolveComponentVersion "web" WEB_VERSION web_version_heatmap ultra_web
     else
         WEB_VERSION="N/A"
