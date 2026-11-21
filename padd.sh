@@ -439,9 +439,6 @@ GetLatestDomain() {
     # Read config.privacy_level directly from padd_data (zero subshells/forks)
     # rather than relying on a global privacy_level that GetSummaryInformation() shadows.
     GetPADDValue config.privacy_level priv 0
-    if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
-        priv=0
-    fi
 
     if [ "${priv}" -ge 1 ]; then
         latest_domain="hidden by privacy level"
@@ -634,9 +631,6 @@ GetSystemInformation() {
 
     # System uptime
     GetPADDValue system.uptime system_uptime_raw 0
-    if [ -z "${system_uptime_raw}" ] || [ "${system_uptime_raw}" = "null" ]; then
-        system_uptime_raw=0
-    fi
 
     # CPU temperature and unit
     GetPADDValue sensors.cpu_temp cpu_temp_raw
@@ -720,12 +714,6 @@ GetSystemInformation() {
         GetPADDValue system.cpu.load.percent.0 cpu_percent_raw 0
     fi
 
-    if [ -z "${core_count}" ] || [ "${core_count}" = "null" ]; then core_count=0; fi
-    if [ -z "${cpu_load_1_raw}" ] || [ "${cpu_load_1_raw}" = "null" ]; then cpu_load_1_raw=0; fi
-    if [ -z "${cpu_load_5_raw}" ] || [ "${cpu_load_5_raw}" = "null" ]; then cpu_load_5_raw=0; fi
-    if [ -z "${cpu_load_15_raw}" ] || [ "${cpu_load_15_raw}" = "null" ]; then cpu_load_15_raw=0; fi
-    if [ -z "${cpu_percent_raw}" ] || [ "${cpu_percent_raw}" = "null" ]; then cpu_percent_raw=0; fi
-
     if [ "${core_count}" -gt 0 ]; then
         sys_cores="${core_count}"
     else
@@ -733,9 +721,6 @@ GetSystemInformation() {
     fi
 
     GetPADDValue system.procs sys_procs "N/A"
-    if [ -z "${sys_procs}" ] || [ "${sys_procs}" = "null" ]; then
-        sys_procs="N/A"
-    fi
 
     cpu_load_1=$(printf %.2f "${cpu_load_1_raw}")
     cpu_load_5=$(printf %.2f "${cpu_load_5_raw}")
@@ -752,9 +737,7 @@ GetSystemInformation() {
 
     # Memory use and heatmap (bar is generated in GenerateSizeDependentOutput)
     GetPADDValue system.memory.ram.%used memory_percent_raw 0
-    if [ -z "${memory_percent_raw}" ] || [ "${memory_percent_raw}" = "null" ]; then
-        memory_percent_raw=0
-    fi
+
     memory_percent=$(printf %.1f "${memory_percent_raw}")
     HeatmapGenerator "${memory_percent}"
     memory_heatmap="${heat_out}"
@@ -773,9 +756,7 @@ GetSystemInformation() {
 
     # Swap use and heatmap (bar is generated in GenerateSizeDependentOutput)
     GetPADDValue system.memory.swap.%used swap_percent_raw 0
-    if [ -z "${swap_percent_raw}" ] || [ "${swap_percent_raw}" = "null" ]; then
-        swap_percent_raw=0
-    fi
+
     swap_percent=$(printf %.1f "${swap_percent_raw}")
     HeatmapGenerator "${swap_percent}"
     swap_heatmap="${heat_out}"
@@ -841,7 +822,7 @@ GetNetworkInformation() {
     GetPADDValue iface.v4.name gateway_v4_iface
     GetPADDValue iface.v6.name gateway_v6_iface
 
-# Get IPv4 address of the default interface
+    # Get IPv4 address of the default interface
     GetPADDValue iface.v4.num_addrs pi_ip4_addrs 0
     GetPADDValue iface.v4.addr pi_ip4_addr ""
     if [ "${pi_ip4_addrs}" -eq 0 ] || [ -z "${pi_ip4_addr}" ]; then
