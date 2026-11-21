@@ -1622,41 +1622,65 @@ PrintDashboard() {
 
 ############################################# HELPERS ##############################################
 
-# Sets global `heat_out` to a color based on a percentage (1 arg) or ratio (2 args)
-# Uses fixed-point POSIX integer math and a global output variable (zero subshells/forks).
-HeatmapGenerator () {
-    local int_part frac_part frac_tail denom scaled load
+# Parses a non-negative decimal number into an integer scaled by 100
+# (e.g. 52.5 -> 5250, 0.08 -> 8, negative/non-numeric -> 0) and assigns
+# it to target variable $2 without subshells or external forks.
+# Usage: ParseFixed100 <value> <out_var>
+ParseFixed100() {
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _int _frac _tail _scaled
 
-    # Negative inputs are always below 75%
     case "$1" in
         -*)
-            heat_out="${green_text}"
-            return
-            ;;
-        *.*)
-            int_part=${1%%.*}
-            frac_part=${1#*.}
+            _scaled=0
             ;;
         *)
-            int_part=$1
-            frac_part=""
+            case "$1" in
+                *.*)
+                    _int=${1%%.*}
+                    _frac=${1#*.}
+                    ;;
+                *)
+                    _int=$1
+                    _frac=""
+                    ;;
+            esac
+
+            case "${_int}${_frac}" in
+                ''|*[!0-9]*)
+                    _scaled=0
+                    ;;
+                *)
+                    # Pad and slice fractional part to 2 digits (e.g. "" -> 00, "5" -> 50, "08" -> 08)
+                    _frac="${_frac}00"
+                    _tail=${_frac#??}
+                    _frac=${_frac%"${_tail}"}
+
+                    # Strip leading zeros so $((...)) never treats 08/09 as invalid octal
+                    _frac=${_frac#0}
+                    while :; do
+                        case "${_int}" in
+                            0?*) _int=${_int#0} ;;
+                            *)   break ;;
+                        esac
+                    done
+                    _int=${_int:-0}
+                    _scaled=$((_int * 100 + _frac))
+                    ;;
+            esac
             ;;
     esac
 
-    # Pad and slice fractional part to exactly 2 digits in-process (e.g. "" -> 00, "5" -> 50, "08" -> 08)
-    frac_part="${frac_part}00"
-    frac_tail=${frac_part#??}
-    frac_part=${frac_part%"${frac_tail}"}
+    # shellcheck disable=SC2034
+    eval "$2=\${_scaled}"
+}
 
-    # Strip leading zeros so $((...)) never treats 08/09 as invalid octal
-    frac_part=${frac_part#0}
-    while :; do
-        case "${int_part}" in
-            0?*) int_part=${int_part#0} ;;
-            *)   break ;;
-        esac
-    done
-    int_part=${int_part:-0}
+# Sets global `heat_out` to a color based on a percentage (1 arg) or ratio (2 args)
+# Uses fixed-point POSIX integer math and a global output variable (zero subshells/forks).
+HeatmapGenerator () {
+    local scaled denom load
+
+    ParseFixed100 "$1" scaled
 
     # Default denominator to 100 for single-arg percentage calls; unify 1-arg and 2-arg math
     denom=${2:-100}
@@ -1667,8 +1691,7 @@ HeatmapGenerator () {
         esac
     done
 
-    # Guard against non-numeric inputs or division by zero (e.g. core_count=0)
-    case "${int_part}${frac_part}${denom}" in
+    case "${denom}" in
         ''|*[!0-9]*)
             load=0
             ;;
@@ -1676,7 +1699,6 @@ HeatmapGenerator () {
             if [ "${denom}" -eq 0 ]; then
                 load=0
             else
-                scaled=$((int_part * 100 + frac_part))
                 # Round (scaled / denom) to nearest integer (round-half-up)
                 load=$(((2 * scaled + denom) / (2 * denom)))
             fi
@@ -1700,46 +1722,9 @@ HeatmapGenerator () {
 # $2: max length of the bar
 # $3: colored flag, if "color" backfill with color
 BarGenerator() {
-    local int_part frac_part frac_tail scaled width barNumber backfillNumber i frontFill backFill
+    local scaled width barNumber backfillNumber i frontFill backFill fill_char
 
-    # Scale percentage by 100 into a fixed-point integer (e.g. 52.5 -> 5250, 0.08 -> 8)
-    case "$1" in
-        -*)
-            scaled=0
-            ;;
-        *.*)
-            int_part=${1%%.*}
-            frac_part=${1#*.}
-            frac_part="${frac_part}00"
-            frac_tail=${frac_part#??}
-            frac_part=${frac_part%"${frac_tail}"}
-            frac_part=${frac_part#0}
-            while :; do
-                case "${int_part}" in
-                    0?*) int_part=${int_part#0} ;;
-                    *)   break ;;
-                esac
-            done
-            int_part=${int_part:-0}
-            case "${int_part}${frac_part}" in
-                ''|*[!0-9]*) scaled=0 ;;
-                *)           scaled=$((int_part * 100 + frac_part)) ;;
-            esac
-            ;;
-        *)
-            int_part=$1
-            while :; do
-                case "${int_part}" in
-                    0?*) int_part=${int_part#0} ;;
-                    *)   break ;;
-                esac
-            done
-            case "${int_part}" in
-                ''|*[!0-9]*) scaled=0 ;;
-                *)           scaled=$((int_part * 100)) ;;
-            esac
-            ;;
-    esac
+    ParseFixed100 "$1" scaled
 
     width=${2:-0}
     while :; do
@@ -1777,19 +1762,20 @@ BarGenerator() {
 
     if [ "${barNumber}" -lt "${width}" ]; then
         backfillNumber=$((width - barNumber))
+        if [ "$3" = "color" ]; then
+            fill_char="■"
+        else
+            fill_char="·"
+        fi
         backFill=""
         i=0
+        while [ "${i}" -lt "${backfillNumber}" ]; do
+            backFill="${backFill}${fill_char}"
+            i=$((i + 1))
+        done
         if [ "$3" = "color" ]; then
-            while [ "${i}" -lt "${backfillNumber}" ]; do
-                backFill="${backFill}■"
-                i=$((i + 1))
-            done
             bar_out="${red_text}${frontFill}${green_text}${backFill}${reset_text}"
         else
-            while [ "${i}" -lt "${backfillNumber}" ]; do
-                backFill="${backFill}·"
-                i=$((i + 1))
-            done
             bar_out="${frontFill}${reset_text}${backFill}"
         fi
     else
