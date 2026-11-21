@@ -2108,8 +2108,8 @@ ShowVersion() {
     exit 0
 }
 
-StartupRoutine(){
-    local i
+StartupRoutine() {
+    local i banner
     if [ "$1" = "ants" ]; then
         # If the screen is too small from the beginning, exit
         printf "%b" "${check_box_bad} Error!\n    PADD isn't\n    for ants!\n"
@@ -2126,136 +2126,113 @@ StartupRoutine(){
     # adds the y-offset
     moveYOffset
 
-    if [ "$1" = "pico" ] || [ "$1" = "nano" ] || [ "$1" = "micro" ]; then
-        PrintLogo "$1"
-        if [ "$1" = "pico" ]; then
-            moveXOffset; printf "%b" "START-UP ===========\n"
-        elif [ "$1" = "nano" ]; then
-            moveXOffset; printf "%b" "START-UP ===============\n"
-        else
-            moveXOffset; printf "%b" "START-UP =====================\n"
-        fi
+    PrintLogo "$1"
+    case "$1" in
+        pico)  banner="START-UP ===========" ;;
+        nano)  banner="START-UP ===============" ;;
+        micro) banner="START-UP =====================" ;;
+        mini)  banner="START UP ===============================" ;;
+        tiny)  banner="START UP ============================================" ;;
+        *)     banner="START UP ===================================================" ;;
+    esac
+    moveXOffset; printf "%s\n" "${banner}"
 
-        # Test if the authentication endpoint is available
-        TestAPIAvailability || failStartup
+    # Test if the authentication endpoint is available
+    TestAPIAvailability || failStartup
 
-        # Authenticate with the FTL server
-        moveXOffset; printf "%b" "Establishing connection with FTL...\n"
-        LoginAPI || failStartup
+    # Authenticate with the FTL server
+    moveXOffset; printf "%s\n" "Establishing connection with FTL..."
+    LoginAPI || failStartup
 
-        moveXOffset; printf "%b" "Starting PADD...\n"
+    case "$1" in
+        pico|nano|micro)
+            moveXOffset; printf "%s\n" "Starting PADD..."
+            moveXOffset; printf "%b" " [■·········]  10%\r"
 
-        moveXOffset; printf "%b" " [■·········]  10%\r"
+            # Request data
+            GetPADDData
 
-        # Request data
-        GetPADDData
+            # Check for updates
+            moveXOffset; printf "%b" " [■■········]  20%\r"
+            moveXOffset; printf "%b" " [■■■·······]  30%\r"
 
-        # Check for updates
-        moveXOffset; printf "%b" " [■■········]  20%\r"
-        moveXOffset; printf "%b" " [■■■·······]  30%\r"
+            # Get our information for the first time
+            moveXOffset; printf "%b" " [■■■■······]  40%\r"
+            GetVersionInformation
+            moveXOffset; printf "%b" " [■■■■■·····]  50%\r"
+            GetSummaryInformation
+            moveXOffset; printf "%b" " [■■■■■■····]  60%\r"
+            GetPiholeInformation
+            moveXOffset; printf "%b" " [■■■■■■■···]  70%\r"
+            GetNetworkInformation
+            moveXOffset; printf "%b" " [■■■■■■■■··]  80%\r"
+            GetSystemInformation
+            moveXOffset; printf "%b" " [■■■■■■■■■·]  90%\r"
+            GetPADDInformation
+            moveXOffset; printf "%b" " [■■■■■■■■■■] 100%\n"
+            ;;
+        mini)
+            # Request PADD data
+            moveXOffset; echo "- Requesting PADD information..."
+            GetPADDData
 
-        # Get our information for the first time
-        moveXOffset; printf "%b" " [■■■■······]  40%\r"
-        GetVersionInformation
-        moveXOffset; printf "%b" " [■■■■■·····]  50%\r"
-        GetSummaryInformation
-        moveXOffset; printf "%b" " [■■■■■■····]  60%\r"
-        GetPiholeInformation
-        moveXOffset; printf "%b" " [■■■■■■■···]  70%\r"
-        GetNetworkInformation
-        moveXOffset; printf "%b" " [■■■■■■■■··]  80%\r"
-        GetSystemInformation
-        moveXOffset; printf "%b" " [■■■■■■■■■·]  90%\r"
-        GetPADDInformation
-        LastCheckPADDInformation=$(date +%s)
-        moveXOffset; printf "%b" " [■■■■■■■■■■] 100%\n"
+            # Get our information for the first time
+            moveXOffset; echo "- Gathering version info."
+            GetVersionInformation
+            moveXOffset; echo "- Gathering system info."
+            GetSystemInformation
+            moveXOffset; echo "- Gathering CPU/DNS info."
+            GetPiholeInformation
+            GetSummaryInformation
+            moveXOffset; echo "- Gathering network info."
+            GetNetworkInformation
+            GetPADDInformation
 
-    elif [ "$1" = "mini" ]; then
-        PrintLogo "$1"
-        moveXOffset; echo "START UP ==============================="
+            if [ "${DOCKER_VERSION}" != "null" ]; then
+                moveXOffset; echo "  - Docker Tag ${DOCKER_VERSION}"
+            else
+                moveXOffset; echo "  - Core ${CORE_VERSION}, Web ${WEB_VERSION}"
+                moveXOffset; echo "  - FTL ${FTL_VERSION}, PADD ${padd_version}"
+            fi
+            ;;
+        *)
+            # Request PADD data
+            moveXOffset; echo "- Requesting PADD information..."
+            GetPADDData
+            GetLatestDomain
 
-        # Test if the authentication endpoint is available
-        TestAPIAvailability || failStartup
+            # Get our information for the first time
+            moveXOffset; echo "- Gathering version information..."
+            GetVersionInformation
+            moveXOffset; echo "- Gathering system information..."
+            GetSystemInformation
+            moveXOffset; echo "- Gathering CPU/DNS information..."
+            GetSummaryInformation
+            GetPiholeInformation
+            moveXOffset; echo "- Gathering network information..."
+            GetNetworkInformation
+            GetPADDInformation
 
-        # Authenticate with the FTL server
-        moveXOffset; printf "%b" "Establishing connection with FTL...\n"
-        LoginAPI || failStartup
+            if [ "${DOCKER_VERSION}" != "null" ]; then
+                moveXOffset; echo "  - Docker Tag ${DOCKER_VERSION}"
+            else
+                moveXOffset; echo "  - Pi-hole Core ${CORE_VERSION}"
+                moveXOffset; echo "  - Web Admin ${WEB_VERSION}"
+                moveXOffset; echo "  - FTL ${FTL_VERSION}"
+                moveXOffset; echo "  - PADD ${padd_version}"
+            fi
+            ;;
+    esac
 
-        # Request PADD data
-        moveXOffset; echo "- Requesting PADD information..."
-        GetPADDData
-
-        # Get our information for the first time
-        moveXOffset; echo "- Gathering version info."
-        GetVersionInformation
-        moveXOffset; echo "- Gathering system info."
-        GetSystemInformation
-        moveXOffset; echo "- Gathering CPU/DNS info."
-        GetPiholeInformation
-        GetSummaryInformation
-        moveXOffset; echo "- Gathering network info."
-        GetNetworkInformation
-        GetPADDInformation
-        LastCheckPADDInformation=$(date +%s)
-        if [ "${DOCKER_VERSION}" != "null" ]; then
-        moveXOffset; echo "  - Docker Tag ${DOCKER_VERSION}"
-        else
-        moveXOffset; echo "  - Core ${CORE_VERSION}, Web ${WEB_VERSION}"
-        moveXOffset; echo "  - FTL ${FTL_VERSION}, PADD ${padd_version}"
-        fi
-
-    else
-        PrintLogo "$1"
-        if [ "$1" = "tiny" ]; then
-        moveXOffset; echo "START UP ============================================"
-        else
-        moveXOffset; echo "START UP ==================================================="
-        fi
-
-        # Test if the authentication endpoint is available
-        TestAPIAvailability || failStartup
-
-        # Authenticate with the FTL server
-        moveXOffset; printf "%b" "Establishing connection with FTL...\n"
-        LoginAPI || failStartup
-
-        # Request PADD data
-        moveXOffset; echo "- Requesting PADD information..."
-        GetPADDData
-        GetLatestDomain
-
-        # Get our information for the first time
-        moveXOffset; echo "- Gathering version information..."
-        GetVersionInformation
-        moveXOffset; echo "- Gathering system information..."
-        GetSystemInformation
-        moveXOffset; echo "- Gathering CPU/DNS information..."
-        GetSummaryInformation
-        GetPiholeInformation
-        moveXOffset; echo "- Gathering network information..."
-        GetNetworkInformation
-
-        GetPADDInformation
-        LastCheckPADDInformation=$(date +%s)
-        if [ "${DOCKER_VERSION}" != "null" ]; then
-        moveXOffset; echo "  - Docker Tag ${DOCKER_VERSION}"
-        else
-        moveXOffset; echo "  - Pi-hole Core ${CORE_VERSION}"
-        moveXOffset; echo "  - Web Admin ${WEB_VERSION}"
-        moveXOffset; echo "  - FTL ${FTL_VERSION}"
-        moveXOffset; echo "  - PADD ${padd_version}"
-        fi
-    fi
+    LastCheckPADDInformation=$(date +%s)
 
     if [ "${runOnce}" = "false" ]; then
         moveXOffset; printf "%s" "- Starting in "
-        for i in 3 2 1
-        do
+        for i in 3 2 1; do
             printf "%s..." "${i}"
             sleep 1
         done
     fi
-
 }
 
 NormalPADD() {
