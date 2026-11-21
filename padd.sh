@@ -741,13 +741,6 @@ GetSystemInformation() {
             ;;
     esac
 
-    if [ -n "${temp_conv}" ]; then
-        cpu_temp_celsius="${temp_conv%%.*}"
-        if [ "${cpu_temp_celsius}" = "-0" ]; then
-            cpu_temp_celsius=0
-        fi
-    fi
-
     # CPU temperature heatmap
     GetPADDValue sensors.hot_limit hot_limit
     hot_limit="${hot_limit%%.*}"
