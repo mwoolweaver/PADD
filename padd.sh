@@ -1182,7 +1182,7 @@ CompareMasterVersion() {
     VersionConverter "$2" _remote_num
 
     # shellcheck disable=SC2034
-    if [ "${local_num}" -lt "${remote_num}" ]; then
+    if [ "${_local_num}" -lt "${_remote_num}" ]; then
         out_of_date_flag="true"
         color="${red_text}"
     else
