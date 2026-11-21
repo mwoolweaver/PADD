@@ -633,53 +633,48 @@ GetSystemInformation() {
     GetPADDValue system.uptime system_uptime_raw 0
 
     # CPU temperature and unit
-    GetPADDValue sensors.cpu_temp cpu_temp_raw
-    if [ -n "${cpu_temp_raw}" ] && [ "${cpu_temp_raw}" != "null" ]; then
+    GetPADDValue sensors.cpu_temp cpu_temp_raw ""
+    if [ -n "${cpu_temp_raw}" ]; then
         cpu_temp=$(printf "%.1f" "${cpu_temp_raw}")
-        GetPADDValue sensors.unit temp_unit
+        GetPADDValue sensors.unit temp_unit ""
     else
         cpu_temp=""
         temp_unit=""
     fi
 
     # Temp + Unit
-    if [ "${temp_unit}" = "C" ]; then
-        temperature="${cpu_temp}°${temp_unit}"
-        # no conversion needed
-        cpu_temp_celsius="${cpu_temp%%.*}"
-        temp_unicode=true
-    elif [ "${temp_unit}" = "F" ]; then
-        temperature="${cpu_temp}°${temp_unit}"
-        # convert to Celsius for limit checking
-        temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", (t - 32) * 5 / 9 }')"
-        if [ -n "${temp_conv}" ]; then
-            cpu_temp_celsius="${temp_conv%%.*}"
-            if [ "${cpu_temp_celsius}" = "-0" ]; then
-                cpu_temp_celsius=0
-            fi
-        else
-            cpu_temp_celsius=-274
+    temp_conv=""
+    cpu_temp_celsius=-274
+    case "${temp_unit}" in
+        C)
+            temperature="${cpu_temp}°${temp_unit}"
+            cpu_temp_celsius="${cpu_temp%%.*}"
+            temp_unicode=true
+            ;;
+        F)
+            temperature="${cpu_temp}°${temp_unit}"
+            # convert to Celsius for limit checking
+            temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", (t - 32) * 5 / 9 }')"
+            temp_unicode=true
+            ;;
+        K)
+            # no ° for Kelvin
+            temperature="${cpu_temp}${temp_unit}"
+            # convert to Celsius for limit checking
+            temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", t - 273.15 }')"
+            temp_unicode=false
+            ;;
+        *) # unknown unit
+            temperature="N/A"
+            temp_unicode=false
+            ;;
+    esac
+
+    if [ -n "${temp_conv}" ]; then
+        cpu_temp_celsius="${temp_conv%%.*}"
+        if [ "${cpu_temp_celsius}" = "-0" ]; then
+            cpu_temp_celsius=0
         fi
-        temp_unicode=true
-    elif [ "${temp_unit}" = "K" ]; then
-        # no ° for Kelvin
-        temperature="${cpu_temp}${temp_unit}"
-        # convert to Celsius for limit checking
-        temp_conv="$(awk -v t="${cpu_temp}" 'BEGIN { printf "%.6g\n", t - 273.15 }')"
-        if [ -n "${temp_conv}" ]; then
-            cpu_temp_celsius="${temp_conv%%.*}"
-            if [ "${cpu_temp_celsius}" = "-0" ]; then
-                cpu_temp_celsius=0
-            fi
-        else
-            cpu_temp_celsius=-274
-        fi
-        temp_unicode=false
-    else # unknown unit
-        temperature="N/A"
-        # no conversion needed
-        cpu_temp_celsius=-274
-        temp_unicode=false
     fi
 
     # CPU temperature heatmap
@@ -742,9 +737,9 @@ GetSystemInformation() {
     HeatmapGenerator "${memory_percent}"
     memory_heatmap="${heat_out}"
 
-    GetPADDValue system.memory.ram.used memory_used_raw
-    GetPADDValue system.memory.ram.total memory_total_raw
-    if [ -n "${memory_used_raw}" ] && [ "${memory_used_raw}" != "null" ] && [ -n "${memory_total_raw}" ] && [ "${memory_total_raw}" != "null" ]; then
+    GetPADDValue system.memory.ram.used memory_used_raw ""
+    GetPADDValue system.memory.ram.total memory_total_raw ""
+    if [ -n "${memory_used_raw}" ] && [ -n "${memory_total_raw}" ]; then
         memory_used_total=$(awk -v u="${memory_used_raw}" -v t="${memory_total_raw}" 'BEGIN {
             if (u >= 1048576) us = sprintf("%.1fG", u / 1048576); else us = sprintf("%.0fM", u / 1024);
             if (t >= 1048576) ts = sprintf("%.1fG", t / 1048576); else ts = sprintf("%.0fM", t / 1024);
@@ -870,13 +865,7 @@ GetNetworkInformation() {
         DHCP_IPv6=""
         # Is DHCP handling IPv6?
         GetPADDValue config.dhcp_ipv6 DHCP_IPv6
-        if [ "${DHCP_IPv6}" = "true" ]; then
-            dhcp_ipv6_status="Enabled"
-            dhcp_ipv6_heatmap=${green_text}
-        else
-            dhcp_ipv6_status="Disabled"
-            dhcp_ipv6_heatmap=${blue_text}
-        fi
+        SetBoolStatus "${DHCP_IPv6}" dhcp_ipv6_status dhcp_ipv6_heatmap
     else
         dhcp_status="Disabled"
         dhcp_heatmap=${blue_text}
@@ -916,23 +905,11 @@ GetNetworkInformation() {
 
     # DNSSEC
     GetPADDValue config.dns_dnssec DNSSEC
-    if [ "${DNSSEC}" = "true" ]; then
-        dnssec_status="Enabled"
-        dnssec_heatmap=${green_text}
-    else
-        dnssec_status="Disabled"
-        dnssec_heatmap=${blue_text}
-    fi
+    SetBoolStatus "${DNSSEC}" dnssec_status dnssec_heatmap
 
     # Conditional forwarding
     GetPADDValue config.dns_revServer_active CONDITIONAL_FORWARDING
-    if [ "${CONDITIONAL_FORWARDING}" = "true" ]; then
-        conditional_forwarding_status="Enabled"
-        conditional_forwarding_heatmap=${green_text}
-    else
-        conditional_forwarding_status="Disabled"
-        conditional_forwarding_heatmap=${blue_text}
-    fi
+    SetBoolStatus "${CONDITIONAL_FORWARDING}" conditional_forwarding_status conditional_forwarding_heatmap
 
     # Default interface data (use IPv4 interface - we cannot show both and assume they are the same)
     iface_name="${gateway_v4_iface}"
@@ -1559,6 +1536,27 @@ PrintDashboard() {
 }
 
 ############################################# HELPERS ##############################################
+
+# Assigns "Enabled"/${green_text} when $1 is "true", otherwise "Disabled"/${blue_text},
+# into target variables $2 and $3 without subshells or external forks.
+# Usage: SetBoolStatus <bool_val> <status_var> <heatmap_var>
+SetBoolStatus() {
+    local _var _status _heat
+    for _var in "$2" "$3"; do
+        case "${_var}" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    done
+
+    if [ "$1" = "true" ]; then
+        _status="Enabled"
+        _heat="${green_text}"
+    else
+        _status="Disabled"
+        _heat="${blue_text}"
+    fi
+
+    # shellcheck disable=SC2034
+    eval "$2=\${_status}; $3=\${_heat}"
+}
 
 # Parses a non-negative decimal number into an integer scaled by 100
 # (e.g. 52.5 -> 5250, 0.08 -> 8, negative/non-numeric -> 0) and assigns
