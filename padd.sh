@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-
+# shellcheck disable=SC2034,SC2154
 # Pi-hole: A black hole for Internet advertisements
 # (c) Pi-hole (https://pi-hole.net)
 # Network-wide ad blocking via your own hardware.
