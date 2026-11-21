@@ -524,7 +524,7 @@ GetPADDValue() {
 }
 
 GetSummaryInformation() {
-    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level
+    local domains_being_blocked_raw dns_queries_today_raw ads_blocked_today_raw ads_percentage_today_raw dns_queries_frequency_raw privacy_level freq_parsed nl
     if [ "${connection_down_flag}" = true ]; then
         clients="N/A"
         blocking_enabled="N/A"
@@ -583,30 +583,28 @@ GetSummaryInformation() {
     dns_queries_today=$(printf "%.f" "${dns_queries_today_raw}")
     ads_blocked_today=$(printf "%.f" "${ads_blocked_today_raw}")
     ads_percentage_today=$(printf "%.1f" "${ads_percentage_today_raw}")
-    
-    dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN {
-        val = sprintf("%.f", f * 60)
-        if (val == "-0") val = "0"
-        print val
-    }')
 
-    if awk -v q="${dns_queries_frequency}" 'BEGIN { exit !((q + 0) > 100) }'; then
-        dns_query_rate_label="Qrs/sec:"
-        dns_queries_frequency=$(awk -v f="${dns_queries_frequency_raw}" 'BEGIN {
-            freq = f + 0
-            if (freq > 10) printf "%.0f\n", freq
-            else if (freq < 1) printf "%.2f\n", freq
-            else printf "%.1f\n", freq
-        }')
-    else
-        dns_query_rate_label="Qrs/min:"
-        dns_queries_frequency=$(awk -v q="${dns_queries_frequency}" 'BEGIN {
-            freq = q + 0
-            if (freq > 10) printf "%.0f\n", freq
-            else if (freq < 1) printf "%.2f\n", freq
-            else printf "%.1f\n", freq
-        }')
-    fi
+    # Compute label and formatted rate in a single awk invocation, then split via POSIX parameter expansion
+    freq_parsed=$(awk -v f="${dns_queries_frequency_raw}" '
+    function fmt(x) {
+        if (x > 10) return sprintf("%.0f", x)
+        if (x < 1)  return sprintf("%.2f", x)
+        return sprintf("%.1f", x)
+    }
+    BEGIN {
+        raw = f + 0
+        per_min_val = sprintf("%.f", raw * 60)
+        if (per_min_val == "-0") per_min_val = "0"
+        if ((per_min_val + 0) > 100) {
+            printf "Qrs/sec:\n%s\n", fmt(raw)
+        } else {
+            printf "Qrs/min:\n%s\n", fmt(per_min_val + 0)
+        }
+    }')
+    nl='
+'
+    dns_query_rate_label=${freq_parsed%%"${nl}"*}
+    dns_queries_frequency=${freq_parsed#*"${nl}"}
 
     # Substitute values returned by FTL for privacy level >= 1 / >= 2
     if [ "${privacy_level}" -ge 1 ]; then
