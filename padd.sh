@@ -2503,21 +2503,31 @@ main(){
     NormalPADD
 }
 
-# Preserve original CLI args (excluding -u/--update and --2fa <code/value>) so Update()
-# can restart cleanly without replaying a stale TOTP code, using QuoteShellArg
-# with zero subshells or external forks.
+# Preserve original CLI args, excluding -u/--update and --2fa <code>,
+# so Update() can restart cleanly without replaying a stale TOTP code.
 restart_args=""
 _skip_next=""
+
 for _arg in "$@"; do
     if [ -n "${_skip_next}" ]; then
+        if [ "${_skip_next}" = "preserve" ]; then
+            QuoteShellArg "${_arg}" _quoted
+            restart_args="${restart_args} ${_quoted}"
+        fi
         _skip_next=""
         continue
     fi
+
     case "${_arg}" in
         -u|--update)
             ;;
         --2fa)
-            _skip_next=1
+            _skip_next="drop"
+            ;;
+        --xoff|--yoff|--server|--api|--secret)
+            QuoteShellArg "${_arg}" _quoted
+            restart_args="${restart_args} ${_quoted}"
+            _skip_next="preserve"
             ;;
         *)
             QuoteShellArg "${_arg}" _quoted
@@ -2525,6 +2535,7 @@ for _arg in "$@"; do
             ;;
     esac
 done
+
 unset _arg _quoted _skip_next
 
 # Process CLI options; value-taking flags are guarded against missing args ($# -ge 2),
