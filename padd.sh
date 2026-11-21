@@ -438,7 +438,7 @@ GetLatestDomain() {
 
     # Read config.privacy_level directly from padd_data (zero subshells/forks)
     # rather than relying on a global privacy_level that GetSummaryInformation() shadows.
-    GetPADDValue config.privacy_level priv
+    GetPADDValue config.privacy_level priv 0
     if [ -z "${priv}" ] || [ "${priv}" = "null" ]; then
         priv=0
     fi
@@ -502,25 +502,30 @@ EOF
 }
 
 GetPADDValue() {
-    # Usage: GetPADDValue <key> <variable>
+    # Usage: GetPADDValue <key> <variable> [default]
     # Sets <variable> to the value for <key> (empty if missing) in a single call
-    # without grep/awk. Rejects invalid variable names before eval.
+    # without grep/awk. When [default] is provided and the value is empty or "null",
+    # assigns [default] instead. Rejects invalid variable names before eval.
     case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
-    local padd_value nl val
-    padd_value=""
-    nl='
+    local _padd_val _nl _val
+    _padd_val=""
+    _nl='
 '
     # Wrap padd_data in newlines so exact key matching works via POSIX case pattern
-    case "${nl}${padd_data}${nl}" in
-        *"${nl}$1="*)
-            val="${nl}${padd_data}${nl}"
-            val="${val#*"${nl}$1="}"
-            # shellcheck disable=SC2034
-            padd_value="${val%%"${nl}"*}"
-            # padd_value is referenced via eval below
+    case "${_nl}${padd_data}${_nl}" in
+        *"${_nl}$1="*)
+            _val="${_nl}${padd_data}${_nl}"
+            _val="${_val#*"${_nl}$1="}"
+            _padd_val="${_val%%"${_nl}"*}"
             ;;
     esac
-    eval "$2=\${padd_value}"
+    if [ "$#" -ge 3 ]; then
+        case "${_padd_val}" in
+            ''|null) _padd_val="$3" ;;
+        esac
+    fi
+    # shellcheck disable=SC2034
+    eval "$2=\${_padd_val}"
 }
 
 GetSummaryInformation() {
@@ -544,40 +549,21 @@ GetSummaryInformation() {
         return
     fi
 
-    GetPADDValue active_clients clients
-    GetPADDValue blocking blocking_enabled
-    GetPADDValue gravity_size domains_being_blocked_raw
-    GetPADDValue queries.total dns_queries_today_raw
-    GetPADDValue queries.blocked ads_blocked_today_raw
-    GetPADDValue queries.percent_blocked ads_percentage_today_raw
-    GetPADDValue cache.size cache_size
-    GetPADDValue cache.evicted cache_evictions
-    GetPADDValue cache.inserted cache_inserts
-    GetPADDValue recent_blocked latest_blocked_raw
-    GetPADDValue top_blocked top_blocked_raw
-    GetPADDValue top_domain top_domain_raw
-    GetPADDValue top_client top_client_raw
-    GetPADDValue queries.query_frequency dns_queries_frequency_raw
-    GetPADDValue config.privacy_level privacy_level
-
-    # Normalize empty / "null" text fields to "N/A"
-    if [ -z "${clients}" ] || [ "${clients}" = "null" ]; then clients="N/A"; fi
-    if [ -z "${blocking_enabled}" ] || [ "${blocking_enabled}" = "null" ]; then blocking_enabled="N/A"; fi
-    if [ -z "${cache_size}" ] || [ "${cache_size}" = "null" ]; then cache_size="N/A"; fi
-    if [ -z "${cache_evictions}" ] || [ "${cache_evictions}" = "null" ]; then cache_evictions="N/A"; fi
-    if [ -z "${cache_inserts}" ] || [ "${cache_inserts}" = "null" ]; then cache_inserts="N/A"; fi
-    if [ -z "${latest_blocked_raw}" ] || [ "${latest_blocked_raw}" = "null" ]; then latest_blocked_raw="N/A"; fi
-    if [ -z "${top_blocked_raw}" ] || [ "${top_blocked_raw}" = "null" ]; then top_blocked_raw="N/A"; fi
-    if [ -z "${top_domain_raw}" ] || [ "${top_domain_raw}" = "null" ]; then top_domain_raw="N/A"; fi
-    if [ -z "${top_client_raw}" ] || [ "${top_client_raw}" = "null" ]; then top_client_raw="N/A"; fi
-
-    # Normalize empty / "null" numeric fields to 0 before formatting/math
-    if [ -z "${domains_being_blocked_raw}" ] || [ "${domains_being_blocked_raw}" = "null" ]; then domains_being_blocked_raw=0; fi
-    if [ -z "${dns_queries_today_raw}" ] || [ "${dns_queries_today_raw}" = "null" ]; then dns_queries_today_raw=0; fi
-    if [ -z "${ads_blocked_today_raw}" ] || [ "${ads_blocked_today_raw}" = "null" ]; then ads_blocked_today_raw=0; fi
-    if [ -z "${ads_percentage_today_raw}" ] || [ "${ads_percentage_today_raw}" = "null" ]; then ads_percentage_today_raw=0; fi
-    if [ -z "${dns_queries_frequency_raw}" ] || [ "${dns_queries_frequency_raw}" = "null" ]; then dns_queries_frequency_raw=0; fi
-    if [ -z "${privacy_level}" ] || [ "${privacy_level}" = "null" ]; then privacy_level=0; fi
+    GetPADDValue active_clients clients "N/A"
+    GetPADDValue blocking blocking_enabled "N/A"
+    GetPADDValue gravity_size domains_being_blocked_raw 0
+    GetPADDValue queries.total dns_queries_today_raw 0
+    GetPADDValue queries.blocked ads_blocked_today_raw 0
+    GetPADDValue queries.percent_blocked ads_percentage_today_raw 0
+    GetPADDValue cache.size cache_size "N/A"
+    GetPADDValue cache.evicted cache_evictions "N/A"
+    GetPADDValue cache.inserted cache_inserts "N/A"
+    GetPADDValue recent_blocked latest_blocked_raw "N/A"
+    GetPADDValue top_blocked top_blocked_raw "N/A"
+    GetPADDValue top_domain top_domain_raw "N/A"
+    GetPADDValue top_client top_client_raw "N/A"
+    GetPADDValue queries.query_frequency dns_queries_frequency_raw 0
+    GetPADDValue config.privacy_level privacy_level 0
 
     domains_being_blocked=$(printf "%.f" "${domains_being_blocked_raw}")
     dns_queries_today=$(printf "%.f" "${dns_queries_today_raw}")
@@ -647,7 +633,7 @@ GetSystemInformation() {
     fi
 
     # System uptime
-    GetPADDValue system.uptime system_uptime_raw
+    GetPADDValue system.uptime system_uptime_raw 0
     if [ -z "${system_uptime_raw}" ] || [ "${system_uptime_raw}" = "null" ]; then
         system_uptime_raw=0
     fi
@@ -725,13 +711,13 @@ GetSystemInformation() {
     fi
 
     # CPU, load, heatmap
-    GetPADDValue system.cpu.nprocs core_count
-    GetPADDValue system.cpu.load.raw.0 cpu_load_1_raw
-    GetPADDValue system.cpu.load.raw.1 cpu_load_5_raw
-    GetPADDValue system.cpu.load.raw.2 cpu_load_15_raw
-    GetPADDValue system.cpu.%cpu cpu_percent_raw
-    if [ -z "${cpu_percent_raw}" ] || [ "${cpu_percent_raw}" = "null" ]; then
-        GetPADDValue system.cpu.load.percent.0 cpu_percent_raw
+    GetPADDValue system.cpu.nprocs core_count 0
+    GetPADDValue system.cpu.load.raw.0 cpu_load_1_raw 0
+    GetPADDValue system.cpu.load.raw.1 cpu_load_5_raw 0
+    GetPADDValue system.cpu.load.raw.2 cpu_load_15_raw 0
+    GetPADDValue system.cpu.%cpu cpu_percent_raw ""
+    if [ -z "${cpu_percent_raw}" ]; then
+        GetPADDValue system.cpu.load.percent.0 cpu_percent_raw 0
     fi
 
     if [ -z "${core_count}" ] || [ "${core_count}" = "null" ]; then core_count=0; fi
@@ -746,7 +732,7 @@ GetSystemInformation() {
         sys_cores="N/A"
     fi
 
-    GetPADDValue system.procs sys_procs
+    GetPADDValue system.procs sys_procs "N/A"
     if [ -z "${sys_procs}" ] || [ "${sys_procs}" = "null" ]; then
         sys_procs="N/A"
     fi
@@ -765,7 +751,7 @@ GetSystemInformation() {
     cpu_percent_heatmap=${heat_out}
 
     # Memory use and heatmap (bar is generated in GenerateSizeDependentOutput)
-    GetPADDValue system.memory.ram.%used memory_percent_raw
+    GetPADDValue system.memory.ram.%used memory_percent_raw 0
     if [ -z "${memory_percent_raw}" ] || [ "${memory_percent_raw}" = "null" ]; then
         memory_percent_raw=0
     fi
@@ -786,7 +772,7 @@ GetSystemInformation() {
     fi
 
     # Swap use and heatmap (bar is generated in GenerateSizeDependentOutput)
-    GetPADDValue system.memory.swap.%used swap_percent_raw
+    GetPADDValue system.memory.swap.%used swap_percent_raw 0
     if [ -z "${swap_percent_raw}" ] || [ "${swap_percent_raw}" = "null" ]; then
         swap_percent_raw=0
     fi
@@ -855,51 +841,32 @@ GetNetworkInformation() {
     GetPADDValue iface.v4.name gateway_v4_iface
     GetPADDValue iface.v6.name gateway_v6_iface
 
-    # Get IPv4 address of the default interface
-    GetPADDValue iface.v4.num_addrs pi_ip4_addrs
-    GetPADDValue iface.v4.addr pi_ip4_addr
-    if [ -z "${pi_ip4_addrs}" ] || [ "${pi_ip4_addrs}" = "null" ]; then
-        pi_ip4_addrs=0
-    fi
-    if [ "${pi_ip4_addrs}" -eq 0 ] || [ -z "${pi_ip4_addr}" ] || [ "${pi_ip4_addr}" = "null" ]; then
-        # No IPv4 address available
+# Get IPv4 address of the default interface
+    GetPADDValue iface.v4.num_addrs pi_ip4_addrs 0
+    GetPADDValue iface.v4.addr pi_ip4_addr ""
+    if [ "${pi_ip4_addrs}" -eq 0 ] || [ -z "${pi_ip4_addr}" ]; then
         pi_ip4_addr="N/A"
     elif [ "${pi_ip4_addrs}" -gt 1 ]; then
-        # More than one IPv4 address available
         pi_ip4_addr="${pi_ip4_addr}+"
     fi
 
-    # Get IPv4 default gateway
-    GetPADDValue iface.v4.gw_addr gw_v4_addr
-    if [ -z "${gw_v4_addr}" ] || [ "${gw_v4_addr}" = "null" ]; then
-        gw_v4_addr="N/A"
-    fi
-
-    # Get IPv6 default gateway
-    GetPADDValue iface.v6.gw_addr gw_v6_addr
-    if [ -z "${gw_v6_addr}" ] || [ "${gw_v6_addr}" = "null" ]; then
-        gw_v6_addr="N/A"
-    fi
+    # Get IPv4 and IPv6 default gateways
+    GetPADDValue iface.v4.gw_addr gw_v4_addr "N/A"
+    GetPADDValue iface.v6.gw_addr gw_v6_addr "N/A"
 
     # Get IPv6 address of the default interface
-    GetPADDValue iface.v6.num_addrs pi_ip6_addrs
-    GetPADDValue iface.v6.addr pi_ip6_addr
-    if [ -z "${pi_ip6_addrs}" ] || [ "${pi_ip6_addrs}" = "null" ]; then
-        pi_ip6_addrs=0
-    fi
-    if [ "${pi_ip6_addrs}" -eq 0 ] || [ -z "${pi_ip6_addr}" ] || [ "${pi_ip6_addr}" = "null" ]; then
-        # No IPv6 address available
+    GetPADDValue iface.v6.num_addrs pi_ip6_addrs 0
+    GetPADDValue iface.v6.addr pi_ip6_addr ""
+    if [ "${pi_ip6_addrs}" -eq 0 ] || [ -z "${pi_ip6_addr}" ]; then
         pi_ip6_addr="N/A"
         ipv6_check_box=${check_box_disabled}
         ipv6_status="Disabled"
         ipv6_heatmap=${blue_text}
     elif [ "${pi_ip6_addrs}" -eq 1 ]; then
-        # One IPv6 address available
         ipv6_check_box=${check_box_good}
         ipv6_status="Enabled"
         ipv6_heatmap=${green_text}
     else
-        # More than one IPv6 address available
         pi_ip6_addr="${pi_ip6_addr}+"
         ipv6_check_box=${check_box_good}
         ipv6_status="Enabled"
@@ -956,30 +923,15 @@ GetNetworkInformation() {
     fi
 
     # Get the number of configured upstream DNS servers
-    GetPADDValue config.dns_num_upstreams dns_count
-    if [ -z "${dns_count}" ] || [ "${dns_count}" = "null" ]; then
-        dns_count=0
-    fi
-    # if there's only one DNS server
+    GetPADDValue config.dns_num_upstreams dns_count 0
     if [ "${dns_count}" -eq 1 ]; then
         dns_information="1 server"
     else
         dns_information="${dns_count} servers"
     fi
 
-    GetPADDValue config.dns_port ftl_dns_port
-    if [ -z "${ftl_dns_port}" ] || [ "${ftl_dns_port}" = "null" ]; then
-        dns_port_display="N/A"
-    else
-        dns_port_display="${ftl_dns_port}"
-    fi
-
-    GetPADDValue config.dns_domain PIHOLE_DOMAIN
-    if [ -z "${PIHOLE_DOMAIN}" ] || [ "${PIHOLE_DOMAIN}" = "null" ]; then
-        dns_domain_display="N/A"
-    else
-        dns_domain_display="${PIHOLE_DOMAIN}"
-    fi
+    GetPADDValue config.dns_port dns_port_display "N/A"
+    GetPADDValue config.dns_domain dns_domain_display "N/A"
 
     # DNSSEC
     GetPADDValue config.dns_dnssec DNSSEC
@@ -1003,16 +955,12 @@ GetNetworkInformation() {
 
     # Default interface data (use IPv4 interface - we cannot show both and assume they are the same)
     iface_name="${gateway_v4_iface}"
-    GetPADDValue iface.v4.tx_bytes.value tx_bytes_raw
-    GetPADDValue iface.v4.tx_bytes.unit tx_bytes_unit
-    if [ -z "${tx_bytes_raw}" ] || [ "${tx_bytes_raw}" = "null" ]; then tx_bytes_raw=0; fi
-    if [ -z "${tx_bytes_unit}" ] || [ "${tx_bytes_unit}" = "null" ]; then tx_bytes_unit=""; fi
+    GetPADDValue iface.v4.tx_bytes.value tx_bytes_raw 0
+    GetPADDValue iface.v4.tx_bytes.unit tx_bytes_unit ""
     tx_bytes=$(printf "%.1f %s" "${tx_bytes_raw}" "${tx_bytes_unit}")
 
-    GetPADDValue iface.v4.rx_bytes.value rx_bytes_raw
-    GetPADDValue iface.v4.rx_bytes.unit rx_bytes_unit
-    if [ -z "${rx_bytes_raw}" ] || [ "${rx_bytes_raw}" = "null" ]; then rx_bytes_raw=0; fi
-    if [ -z "${rx_bytes_unit}" ] || [ "${rx_bytes_unit}" = "null" ]; then rx_bytes_unit=""; fi
+    GetPADDValue iface.v4.rx_bytes.value rx_bytes_raw 0
+    GetPADDValue iface.v4.rx_bytes.unit rx_bytes_unit ""
     rx_bytes=$(printf "%.1f %s" "${rx_bytes_raw}" "${rx_bytes_unit}")
 
     # If IPv4 and IPv6 interfaces are not the same, add a "*" to the interface
