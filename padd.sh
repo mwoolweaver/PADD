@@ -1586,7 +1586,7 @@ PrintDashboard() {
         moveXOffset; printf " %-32s%s${clear_line}\n" "IPv4: ${pi_ip4_addr}" "IPv6: ${pi_ip6_addr}"
         moveXOffset; printf " %-32s%s${clear_line}\n" "IPv4 GW: ${gw_v4_addr}" "IPv6 GW: ${gw_v6_addr}"
         moveXOffset; printf "%s${clear_line}\n" ""
-        moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS =============================================================DHCP ==============================${reset_text}"
+        moveXOffset; printf "%s${clear_line}\n" "${bold_text}DNS =============================================================DHCP==============================${reset_text}"
         moveXOffset; printf " %-32s%-32s%-6s${dhcp_heatmap}%-29s${reset_text}${clear_line}\n" "Servers: ${dns_information}" "Port: ${dns_port_display}" "DHCP:" "${dhcp_status}"
         moveXOffset; printf " %-8s${dnssec_heatmap}%-24s${reset_text}%-32s%-10s${dhcp_ipv6_heatmap}%-25s${reset_text}${clear_line}\n" "DNSSEC:" "${dnssec_status}" "Domain: ${dns_domain_display}" "IPv6 Spt:" "${dhcp_ipv6_status}"
         moveXOffset; printf " %-10s${conditional_forwarding_heatmap}%-22s${reset_text}%-32s%-7s${dhcp_range_heatmap}%-28s${reset_text}${clear_line}\n" "CdFwding:" "${conditional_forwarding_status}" "Privacy: ${privacy_level_display}" "Range:" "${dhcp_range}"
