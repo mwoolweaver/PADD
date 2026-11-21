@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC2034,SC2154
+
 # Pi-hole: A black hole for Internet advertisements
 # (c) Pi-hole (https://pi-hole.net)
 # Network-wide ad blocking via your own hardware.
@@ -521,7 +522,6 @@ GetPADDValue() {
             ''|null) _padd_val="$3" ;;
         esac
     fi
-    # shellcheck disable=SC2034
     eval "$2=\${_padd_val}"
 }
 
@@ -1097,7 +1097,6 @@ ShortenBranch() {
     while [ "${#_branch}" -gt 7 ]; do
         _branch="${_branch%?}"
     done
-    # shellcheck disable=SC2034
     eval "$2=\${_branch}"
 }
 
@@ -1107,7 +1106,6 @@ CleanVersion() {
     case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
     local ver="$1"
     ver="${ver%%-*}"
-    # shellcheck disable=SC2034
     ver="${ver#v}"
     eval "$2=\${ver}"
 }
@@ -1123,7 +1121,6 @@ CompareMasterVersion() {
     VersionConverter "$1" _local_num
     VersionConverter "$2" _remote_num
 
-    # shellcheck disable=SC2034
     if [ "${_local_num}" -lt "${_remote_num}" ]; then
         out_of_date_flag="true"
         color="${red_text}"
@@ -1188,7 +1185,6 @@ ResolveComponentVersion() {
         fi
     fi
 
-    # shellcheck disable=SC2034
     eval "$2=\${_out_ver}; $3=\${_out_heat}; $4=\${_out_ultra}"
 }
 
@@ -1631,7 +1627,6 @@ FormatMemKiB() {
             fi
             ;;
     esac
-    # shellcheck disable=SC2034
     eval "$2=\${_out}"
 }
 
@@ -1652,7 +1647,6 @@ SetBoolStatus() {
         _heat="${blue_text}"
     fi
 
-    # shellcheck disable=SC2034
     eval "$2=\${_status}; $3=\${_heat}"
 }
 
@@ -1705,7 +1699,6 @@ ParseFixed100() {
             ;;
     esac
 
-    # shellcheck disable=SC2034
     eval "$2=\${_scaled}"
 }
 
@@ -1977,7 +1970,6 @@ VersionConverter() {
     done
     _result=${_result:-0}
 
-    # shellcheck disable=SC2034
     eval "$2=\${_result}"
 }
 
