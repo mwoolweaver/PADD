@@ -1664,7 +1664,6 @@ ParseFixed100() {
                     _frac=${_frac#0}
                     StripLeadingZeros "${_int}" _int
                     _int=${_int:-0}
-                    _int=${_int:-0}
                     _scaled=$((_int * 100 + _frac))
                     ;;
             esac
