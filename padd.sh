@@ -1176,10 +1176,10 @@ CleanVersion() {
 # Assigns heatmap color (${red_text} or ${green_text}) to <variable> without a subshell
 CompareMasterVersion() {
     case "$3" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
-    local local_num remote_num color
+    local _local_num _remote_num color
 
-    local_num="$(VersionConverter "$1")"
-    remote_num="$(VersionConverter "$2")"
+    VersionConverter "$1" _local_num
+    VersionConverter "$2" _remote_num
 
     # shellcheck disable=SC2034
     if [ "${local_num}" -lt "${remote_num}" ]; then
@@ -1256,8 +1256,8 @@ GetVersionInformation() {
     # If PADD is running inside docker, immediately return without checking for updated component versions
     if [ "${DOCKER_VERSION}" != "null" ] ; then
         GetPADDValue version.docker.remote GITHUB_DOCKER_VERSION
-        docker_version_converted="$(VersionConverter "${DOCKER_VERSION}")"
-        docker_version_latest_converted="$(VersionConverter "${GITHUB_DOCKER_VERSION}")"
+        VersionConverter "${DOCKER_VERSION}" docker_version_converted
+        VersionConverter "${GITHUB_DOCKER_VERSION}" docker_version_latest_converted
 
         # Note: the version comparison will fail for any Docker tag not following a 'YYYY.MM.VV' scheme
         #       e.g. 'nightly', 'beta', 'v6-pre-alpha' and might set a false out_of_date_flag
@@ -1321,8 +1321,8 @@ EOF
     if [ -z "${padd_version_latest}" ]; then
         padd_version_heatmap=${yellow_text}
     else
-        padd_version_latest_converted="$(VersionConverter "${padd_version_latest}")"
-        padd_version_converted=$(VersionConverter "${padd_version}")
+        VersionConverter "${padd_version_latest}" padd_version_latest_converted
+        VersionConverter "${padd_version}" padd_version_converted
 
         if [ "${padd_version_converted}" -lt "${padd_version_latest_converted}" ]; then
             padd_out_of_date_flag="true"
@@ -1467,21 +1467,26 @@ SetStatusMessage() {
 ############################################# PRINTERS #############################################
 
 PrintLogo() {
-    # Screen size checks
-    if [ "$1" = "pico" ]; then
-        moveXOffset; printf "%s${clear_line}\n" "p${padd_text}"
-    elif [ "$1" = "nano" ]; then
-        moveXOffset; printf "%s${clear_line}\n" "n${padd_text}"
-    elif [ "$1" = "micro" ]; then
-        moveXOffset; printf "%s${clear_line}\n\n" "µ${padd_text}"
-    elif [ "$1" = "mini" ]; then
-        moveXOffset; printf "%s${clear_line}\n" "${padd_text}${dim_text}mini${reset_text} Pi-hole® Ad Detection Display"
-        moveXOffset; printf "%s${clear_line}\n" "         A client for Pi-hole®"
-    else
-        moveXOffset; printf "%b" "${padd_logo_1}\n"
-        moveXOffset; printf "%b" "${padd_logo_2}Pi-hole® Ad Detection Display\n"
-        moveXOffset; printf "%b" "${padd_logo_3}A client for Pi-hole\n\n"
-    fi
+    case "$1" in
+        pico)
+            moveXOffset; printf "%s${clear_line}\n" "p${padd_text}"
+            ;;
+        nano)
+            moveXOffset; printf "%s${clear_line}\n" "n${padd_text}"
+            ;;
+        micro)
+            moveXOffset; printf "%s${clear_line}\n\n" "µ${padd_text}"
+            ;;
+        mini)
+            moveXOffset; printf "%s${clear_line}\n" "${padd_text}${dim_text}mini${reset_text} Pi-hole® Ad Detection Display"
+            moveXOffset; printf "%s${clear_line}\n" "         A client for Pi-hole®"
+            ;;
+        *)
+            moveXOffset; printf "%b" "${padd_logo_1}\n"
+            moveXOffset; printf "%b" "${padd_logo_2}Pi-hole® Ad Detection Display\n"
+            moveXOffset; printf "%b" "${padd_logo_3}A client for Pi-hole\n\n"
+            ;;
+    esac
 }
 
 PrintDashboard() {
@@ -1943,11 +1948,84 @@ SizeChecker(){
     fi
 }
 
-# Converts a version string (e.g. v3.7.1 -> 3007001000) for numeric comparison
-# Passes the value via awk -v in BEGIN to avoid a pipe
-# credits https://apple.stackexchange.com/a/123408
+# Converts a version string (e.g. v3.7.1 -> 3007001000) into a numeric value
+# and assigns it to target variable $2 without subshells or external forks.
+# Usage: VersionConverter <version_string> <out_var>
 VersionConverter() {
-    awk -v v="$*" 'BEGIN { gsub(/[[:alpha:]]/, "", v); split(v, a, "."); printf("%d%03d%03d%03d\n", a[1],a[2],a[3],a[4]); }'
+    case "$2" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _raw="$1" _cleaned="" _ch _rest _seg _part _num _pad _idx _result
+
+    # Strip all ASCII letters in-process without tr/sed/awk
+    while [ -n "${_raw}" ]; do
+        _ch=${_raw%"${_raw#?}"}
+        _raw=${_raw#?}
+        case "${_ch}" in
+            [A-Za-z]) ;;
+            *)        _cleaned="${_cleaned}${_ch}" ;;
+        esac
+    done
+
+    _rest="${_cleaned}"
+    _idx=0
+    _result=""
+
+    while [ "${_idx}" -lt 4 ]; do
+        if [ -n "${_rest}" ]; then
+            case "${_rest}" in
+                *.*)
+                    _seg=${_rest%%.*}
+                    _rest=${_rest#*.}
+                    ;;
+                *)
+                    _seg=${_rest}
+                    _rest=""
+                    ;;
+            esac
+        else
+            _seg="0"
+        fi
+
+        # Extract digits from segment and strip leading zeros (prevents octal errors)
+        _part=""
+        while [ -n "${_seg}" ]; do
+            _ch=${_seg%"${_seg#?}"}
+            _seg=${_seg#?}
+            case "${_ch}" in
+                [0-9]) _part="${_part}${_ch}" ;;
+            esac
+        done
+        while :; do
+            case "${_part}" in
+                0?*) _part=${_part#0} ;;
+                *)   break ;;
+            esac
+        done
+        _num=${_part:-0}
+
+        if [ "${_idx}" -eq 0 ]; then
+            _result="${_num}"
+        else
+            _pad="${_num}"
+            while [ "${#_pad}" -lt 3 ]; do
+                _pad="0${_pad}"
+            done
+            _result="${_result}${_pad}"
+        fi
+
+        _idx=$((_idx + 1))
+    done
+
+    # Strip leading zeros on the final combined value so [ -lt ] stays safe
+    while :; do
+        case "${_result}" in
+            0?*) _result=${_result#0} ;;
+            *)   break ;;
+        esac
+    done
+    _result=${_result:-0}
+
+    # shellcheck disable=SC2034
+    eval "$2=\${_result}"
 }
 
 moveYOffset(){
@@ -2079,27 +2157,14 @@ secretRead() {
 }
 
 check_dependencies() {
-    local hasDeps=true
-    # Check for required dependencies
-    if ! command -v curl >/dev/null 2>&1; then
-        printf "%b" "${check_box_bad} Error!\n    'curl' is missing but required.\n"
-        hasDeps=false
-    fi
-
-    if ! command -v jq >/dev/null 2>&1; then
-        printf "%b" "${check_box_bad} Error!\n    'jq' is missing but required.\n"
-        hasDeps=false
-    fi
-
-    if ! command -v dig >/dev/null 2>&1; then
-        printf "%b" "${check_box_bad} Error!\n    'dig' is missing but required.\n"
-        hasDeps=false
-    fi
-
-    if ! command -v tput >/dev/null 2>&1; then
-        printf "%b" "${check_box_bad} Error!\n    'tput' is missing but required.\n"
-        hasDeps=false
-     fi
+    local hasDeps dep
+    hasDeps=true
+    for dep in curl jq dig tput; do
+        if ! command -v "${dep}" >/dev/null 2>&1; then
+            printf "%b" "${check_box_bad} Error!\n    '%s' is missing but required.\n" "${dep}"
+            hasDeps=false
+        fi
+    done
 
     if [ "${hasDeps}" != true ]; then
         printf "%b" "\n Please install the missing dependencies noted above.\n"
