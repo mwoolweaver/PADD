@@ -1802,16 +1802,79 @@ HeatmapGenerator () {
     fi
 }
 
-# Sets global `bar_out` to a progress bar string without a subshell capture.
+# Sets global `bar_out` to a progress bar string without subshells or forks.
 # $1: percentage filled
 # $2: max length of the bar
 # $3: colored flag, if "color" backfill with color
 BarGenerator() {
-    local barNumber frontFill backFill i backfillNumber out
-    # number of filled in cells in the bar
-    barNumber=$(awk -v pct="${1}" -v width="${2}" 'BEGIN { printf "%.f\n", (pct / 100) * width }')
+    local int_part frac_part frac_tail scaled width barNumber backfillNumber i frontFill backFill
 
-    # Build frontFill using a native loop instead of using seq
+    # Scale percentage by 100 into a fixed-point integer (e.g. 52.5 -> 5250, 0.08 -> 8)
+    case "$1" in
+        -*)
+            scaled=0
+            ;;
+        *.*)
+            int_part=${1%%.*}
+            frac_part=${1#*.}
+            frac_part="${frac_part}00"
+            frac_tail=${frac_part#??}
+            frac_part=${frac_part%"${frac_tail}"}
+            frac_part=${frac_part#0}
+            while :; do
+                case "${int_part}" in
+                    0?*) int_part=${int_part#0} ;;
+                    *)   break ;;
+                esac
+            done
+            int_part=${int_part:-0}
+            case "${int_part}${frac_part}" in
+                ''|*[!0-9]*) scaled=0 ;;
+                *)           scaled=$((int_part * 100 + frac_part)) ;;
+            esac
+            ;;
+        *)
+            int_part=$1
+            while :; do
+                case "${int_part}" in
+                    0?*) int_part=${int_part#0} ;;
+                    *)   break ;;
+                esac
+            done
+            case "${int_part}" in
+                ''|*[!0-9]*) scaled=0 ;;
+                *)           scaled=$((int_part * 100)) ;;
+            esac
+            ;;
+    esac
+
+    width=${2:-0}
+    while :; do
+        case "${width}" in
+            0?*) width=${width#0} ;;
+            *)   break ;;
+        esac
+    done
+    case "${width}" in
+        ''|*[!0-9]*) width=0 ;;
+    esac
+
+    if [ "${width}" -le 0 ]; then
+        bar_out="${reset_text}"
+        return
+    fi
+
+    # Compute filled cells: round((scaled / 10000) * width) = round((scaled * width) / 10000)
+    # Using round-half-up: (2 * scaled * width + 10000) / (2 * 10000)
+    barNumber=$(((2 * scaled * width + 10000) / 20000))
+
+    # Clamp barNumber to [0, width] so percentages >100% or negative values stay within bounds
+    if [ "${barNumber}" -lt 0 ]; then
+        barNumber=0
+    elif [ "${barNumber}" -gt "${width}" ]; then
+        barNumber="${width}"
+    fi
+
     frontFill=""
     i=0
     while [ "${i}" -lt "${barNumber}" ]; do
@@ -1819,43 +1882,26 @@ BarGenerator() {
         i=$((i + 1))
     done
 
-    # remaining "unfilled" cells in the bar
-    backfillNumber=$(($2-barNumber))
-
-    # if the filled in cells is less than the max length of the bar, fill it
-    if [ "${barNumber}" -lt "${2}" ]; then
-        # if the bar should be colored
-        if [ "${3}" = "color" ]; then
-            # fill the rest in color
-            backFill=""
-            i=0
+    if [ "${barNumber}" -lt "${width}" ]; then
+        backfillNumber=$((width - barNumber))
+        backFill=""
+        i=0
+        if [ "$3" = "color" ]; then
             while [ "${i}" -lt "${backfillNumber}" ]; do
                 backFill="${backFill}■"
                 i=$((i + 1))
             done
-            out="${red_text}${frontFill}${green_text}${backFill}${reset_text}"
+            bar_out="${red_text}${frontFill}${green_text}${backFill}${reset_text}"
         else
-            # fill the rest with "space" ("·")
-            backFill=""
-            i=0
             while [ "${i}" -lt "${backfillNumber}" ]; do
                 backFill="${backFill}·"
                 i=$((i + 1))
             done
-            out="${frontFill}${reset_text}${backFill}"
+            bar_out="${frontFill}${reset_text}${backFill}"
         fi
     else
-        # fill it all the way
-        out=""
-        i=0
-        while [ "${i}" -lt "$2" ]; do
-            out="${out}■"
-            i=$((i + 1))
-        done
-        out="${out}${reset_text}"
+        bar_out="${frontFill}${reset_text}"
     fi
-
-    bar_out="${out}"
 }
 
 # Checks the size of the screen and sets `padd_size`, `xOffset`, and `yOffset`
