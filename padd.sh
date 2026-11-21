@@ -1192,9 +1192,49 @@ CompareMasterVersion() {
     eval "$3=\${color}"
 }
 
+# Resolves a component's display version and heatmap color (updating `out_of_date_flag`
+# when behind/mismatched) without subshells or external forks.
+# $1: component prefix ("core", "web", or "ftl")
+# $2: target variable for normalized/shortened version string
+# $3: target variable for heatmap color
+ResolveComponentVersion() {
+    case "$2$3" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    local _comp="$1" _branch _ver_raw _ver_clean _remote_ver _local_hash _remote_hash _out_ver _out_heat
+
+    GetPADDValue "version.${_comp}.local.branch" _branch
+
+    if [ "${_branch}" = "master" ]; then
+        GetPADDValue "version.${_comp}.local.version" _ver_raw
+        CleanVersion "${_ver_raw}" _ver_clean
+        GetPADDValue "version.${_comp}.remote.version" _remote_ver
+        CompareMasterVersion "${_ver_clean}" "${_remote_ver}" _out_heat
+        _out_ver="${_ver_clean}"
+    elif [ -z "${_branch}" ]; then
+        _out_heat="${red_text}"
+        _out_ver="?"
+    else
+        GetPADDValue "version.${_comp}.local.hash" _local_hash
+        GetPADDValue "version.${_comp}.remote.hash" _remote_hash
+
+        if [ "${_local_hash}" = "${_remote_hash}" ]; then
+            _out_heat="${green_text}"
+        else
+            out_of_date_flag="true"
+            _out_heat="${red_text}"
+        fi
+
+        ShortenBranch "${_branch}" _out_ver
+    fi
+
+    # shellcheck disable=SC2034
+    eval "$2=\${_out_ver}; $3=\${_out_heat}"
+}
+
 GetVersionInformation() {
-    local docker_version_converted docker_version_latest_converted CORE_BRANCH CORE_HASH GITHUB_CORE_HASH GITHUB_CORE_VERSION
-    local WEB_BRANCH WEB_HASH GITHUB_WEB_HASH GITHUB_WEB_VERSION FTL_BRANCH FTL_HASH GITHUB_FTL_HASH GITHUB_FTL_VERSION CORE_VERSION_raw FTL_VERSION_raw GITHUB_DOCKER_VERSION
+    local docker_version_converted docker_version_latest_converted GITHUB_DOCKER_VERSION
+    local CORE_BRANCH CORE_HASH FTL_BRANCH FTL_HASH WEB_BRANCH WEB_HASH
+    local ultra_core ultra_web ultra_ftl
+
     if [ "${connection_down_flag}" = true ]; then
         DOCKER_VERSION=null
         CORE_VERSION="N/A"
@@ -1233,107 +1273,29 @@ GetVersionInformation() {
         return
     fi
 
-    # Gather core version information...
-    GetPADDValue version.core.local.branch CORE_BRANCH
+    # Core & FTL are always present in Pi-hole FTL setups
+    ResolveComponentVersion "core" CORE_VERSION core_version_heatmap
+    ResolveComponentVersion "ftl" FTL_VERSION ftl_version_heatmap
 
-    if [ "${CORE_BRANCH}" = "master" ]; then
-        GetPADDValue version.core.local.version CORE_VERSION_raw
-        CleanVersion "${CORE_VERSION_raw}" CORE_VERSION
-        GetPADDValue version.core.remote.version GITHUB_CORE_VERSION
-        CompareMasterVersion "${CORE_VERSION}" "${GITHUB_CORE_VERSION}" core_version_heatmap
-    else
-        # Custom branch
-        if [ -z "${CORE_BRANCH}"  ]; then
-            # Branch name is empty, something went wrong
-            core_version_heatmap=${red_text}
-            CORE_VERSION="?"
-        else
-            GetPADDValue version.core.local.hash CORE_HASH
-            GetPADDValue version.core.remote.hash GITHUB_CORE_HASH
-
-            if [ "${CORE_HASH}" = "${GITHUB_CORE_HASH}" ]; then
-                # up-to-date
-                core_version_heatmap=${green_text}
-            else
-                # out-of-date
-                out_of_date_flag="true"
-                core_version_heatmap=${red_text}
-            fi
-
-            ShortenBranch "${CORE_BRANCH}" CORE_VERSION
-        fi
-    fi
-
-    # Gather web version information...
+    # Web interface is optional (null when not installed)
     GetPADDValue version.web.local.version WEB_VERSION
-
     if [ "${WEB_VERSION}" != "null" ]; then
-        GetPADDValue version.web.local.branch WEB_BRANCH
-
-        if [ "${WEB_BRANCH}" = "master" ]; then
-            CleanVersion "${WEB_VERSION}" WEB_VERSION
-            GetPADDValue version.web.remote.version GITHUB_WEB_VERSION
-            CompareMasterVersion "${WEB_VERSION}" "${GITHUB_WEB_VERSION}" web_version_heatmap
-        else
-            # Custom branch
-            if [ -z "${WEB_BRANCH}"  ]; then
-                # Branch name is empty, something went wrong
-                web_version_heatmap=${red_text}
-                WEB_VERSION="?"
-            else
-                GetPADDValue version.web.local.hash WEB_HASH
-                GetPADDValue version.web.remote.hash GITHUB_WEB_HASH
-
-                if [ "${WEB_HASH}" = "${GITHUB_WEB_HASH}" ]; then
-                    # up-to-date
-                    web_version_heatmap=${green_text}
-                else
-                    # out-of-date
-                    out_of_date_flag="true"
-                    web_version_heatmap=${red_text}
-                fi
-
-                ShortenBranch "${WEB_BRANCH}" WEB_VERSION
-            fi
-        fi
+        ResolveComponentVersion "web" WEB_VERSION web_version_heatmap
     else
-        # Web interface not installed
         WEB_VERSION="N/A"
         web_version_heatmap=${yellow_text}
     fi
 
-    # Gather FTL version information...
+    # Read branches/hashes needed by ultra_version_info without re-querying if already set
+    GetPADDValue version.core.local.branch CORE_BRANCH
+    GetPADDValue version.core.local.hash CORE_HASH
     GetPADDValue version.ftl.local.branch FTL_BRANCH
-
-    if [ "${FTL_BRANCH}" = "master" ]; then
-        GetPADDValue version.ftl.local.version FTL_VERSION_raw
-        CleanVersion "${FTL_VERSION_raw}" FTL_VERSION
-        GetPADDValue version.ftl.remote.version GITHUB_FTL_VERSION
-        CompareMasterVersion "${FTL_VERSION}" "${GITHUB_FTL_VERSION}" ftl_version_heatmap
-    else
-        # Custom branch
-        if [ -z "${FTL_BRANCH}"  ]; then
-            # Branch name is empty, something went wrong
-            ftl_version_heatmap=${red_text}
-            FTL_VERSION="?"
-        else
-            GetPADDValue version.ftl.local.hash FTL_HASH
-            GetPADDValue version.ftl.remote.hash GITHUB_FTL_HASH
-
-            if [ "${FTL_HASH}" = "${GITHUB_FTL_HASH}" ]; then
-                # up-to-date
-                ftl_version_heatmap=${green_text}
-            else
-                # out-of-date
-                out_of_date_flag="true"
-                ftl_version_heatmap=${red_text}
-            fi
-
-            ShortenBranch "${FTL_BRANCH}" FTL_VERSION
-        fi
+    GetPADDValue version.ftl.local.hash FTL_HASH
+    if [ "${WEB_VERSION}" != "N/A" ]; then
+        GetPADDValue version.web.local.branch WEB_BRANCH
+        GetPADDValue version.web.local.hash WEB_HASH
     fi
 
-    local ultra_core ultra_web ultra_ftl
     FormatUltraComponentVersion "${CORE_BRANCH}" "${CORE_VERSION}" "${CORE_BRANCH}" "${CORE_HASH}" ultra_core
     if [ "${WEB_VERSION}" = "N/A" ]; then
         ultra_web="N/A"
@@ -1343,7 +1305,6 @@ GetVersionInformation() {
     FormatUltraComponentVersion "${FTL_BRANCH}" "${FTL_VERSION}" "${FTL_BRANCH}" "${FTL_HASH}" ultra_ftl
 
     ultra_version_info="Pi-hole® ${core_version_heatmap}${ultra_core}${reset_text}, Web ${web_version_heatmap}${ultra_web}${reset_text}, FTL ${ftl_version_heatmap}${ultra_ftl}${reset_text}"
-
 }
 
 GetPADDInformation() {
