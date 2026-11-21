@@ -1301,56 +1301,34 @@ SetStatusMessage() {
     #   - Pi-hole blocking disabled
     #   - Updates are available
     #   - Everything is fine
-
+    local _key _suffix
+    _key=""
+    _suffix=""
 
     if [ "${hot_flag}" = true ]; then
-        # Check if CPU temperature is high
-        pico_status="${pico_status_hot}"
-        mini_status="${mini_status_hot} ${blinking_text}${red_text}${temperature}${reset_text}"
-        tiny_status="${tiny_status_hot} ${blinking_text}${red_text}${temperature}${reset_text}"
-        full_status="${full_status_hot} ${blinking_text}${red_text}${temperature}${reset_text}"
-        mega_status="${mega_status_hot} ${blinking_text}${red_text}${temperature}${reset_text}"
-
+        _key="hot"
+        _suffix=" ${blinking_text}${red_text}${temperature}${reset_text}"
     elif [ "${connection_down_flag}" = true ]; then
-        # Check if FTL is down
-        pico_status=${pico_status_ftl_down}
-        mini_status=${mini_status_ftl_down}
-        tiny_status=${tiny_status_ftl_down}
-        full_status=${full_status_ftl_down}
-        mega_status=${mega_status_ftl_down}
-
+        _key="ftl_down"
     elif [ "${dns_down_flag}" = true ]; then
-        # Check if DNS is down
-        pico_status=${pico_status_dns_down}
-        mini_status=${mini_status_dns_down}
-        tiny_status=${tiny_status_dns_down}
-        full_status=${full_status_dns_down}
-        mega_status=${mega_status_dns_down}
-
+        _key="dns_down"
     elif [ "${blocking_enabled}" = "disabled" ]; then
-        # Check if blocking status is disabled
-        pico_status=${pico_status_off}
-        mini_status=${mini_status_off}
-        tiny_status=${tiny_status_off}
-        full_status=${full_status_off}
-        mega_status=${mega_status_off}
-
+        _key="off"
     elif [ "${out_of_date_flag}" = "true" ] || [ "${padd_out_of_date_flag}" = "true" ]; then
-        # Check if one of the components of Pi-hole (or PADD itself) is out of date
-        pico_status=${pico_status_update}
-        mini_status=${mini_status_update}
-        tiny_status=${tiny_status_update}
-        full_status=${full_status_update}
-        mega_status=${mega_status_update}
-
+        _key="update"
     elif [ "${blocking_enabled}" = "enabled" ]; then
-        # if we reach this point and blocking is enabled, everything is fine
-        pico_status=${pico_status_ok}
-        mini_status=${mini_status_ok}
-        tiny_status=${tiny_status_ok}
-        full_status=${full_status_ok}
-        mega_status=${mega_status_ok}
+        _key="ok"
+    else
+        return
     fi
+
+    eval "
+        pico_status=\${pico_status_${_key}}
+        mini_status=\${mini_status_${_key}}\${_suffix}
+        tiny_status=\${tiny_status_${_key}}\${_suffix}
+        full_status=\${full_status_${_key}}\${_suffix}
+        mega_status=\${mega_status_${_key}}\${_suffix}
+    "
 }
 
 ############################################# PRINTERS #############################################
