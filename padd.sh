@@ -1056,38 +1056,6 @@ ShortenBranch() {
     eval "$2=\${_branch}"
 }
 
-# Formats a component version for the ultra layout:
-# on "master", uses the normalized version ($2); on other branches,
-# uses the first 3 chars of branch ($3) + "@" + first 8 chars of hash ($4).
-FormatUltraComponentVersion() {
-    case "$5" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
-    local branch="$1" ver="$2" hash="$4" short_branch short_hash out
-
-    if [ "${branch}" = "master" ]; then
-        out="${ver}"
-    elif [ -z "${branch}" ]; then
-        out="?"
-    else
-        short_branch="$3"
-        while [ "${#short_branch}" -gt 3 ]; do
-            short_branch="${short_branch%?}"
-        done
-
-        if [ -n "${hash}" ] && [ "${hash}" != "null" ]; then
-            short_hash="${hash}"
-            while [ "${#short_hash}" -gt 8 ]; do
-                short_hash="${short_hash%?}"
-            done
-            out="${short_branch}@${short_hash}"
-        else
-            out="${short_branch}"
-        fi
-    fi
-
-    # shellcheck disable=SC2034
-    eval "$5=\${out}"
-}
-
 # Normalizes a version string (strips '-*' prerelease suffix and leading 'v')
 # and assigns it to <variable> without a subshell
 CleanVersion() {
@@ -1121,26 +1089,32 @@ CompareMasterVersion() {
     eval "$3=\${color}"
 }
 
-# Resolves a component's display version and heatmap color (updating `out_of_date_flag`
-# when behind/mismatched) without subshells or external forks.
+# Resolves a component's display version, heatmap color, and ultra layout string
+# (updating `out_of_date_flag` when behind/mismatched) without subshells or external forks.
 # $1: component prefix ("core", "web", or "ftl")
 # $2: target variable for normalized/shortened version string
 # $3: target variable for heatmap color
+# $4: target variable for ultra layout version string
 ResolveComponentVersion() {
-    case "$2$3" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
-    local _comp="$1" _branch _ver_raw _ver_clean _remote_ver _local_hash _remote_hash _out_ver _out_heat
+    local _var _comp _comp_branch _ver_raw _ver_clean _remote_ver _local_hash _remote_hash _short_branch _short_hash _out_ver _out_heat _out_ultra
+    for _var in "$2" "$3" "$4"; do
+        case "${_var}" in ''|[0-9]*|*[!A-Za-z0-9_]*) return 1 ;; esac
+    done
 
-    GetPADDValue "version.${_comp}.local.branch" _branch
+    _comp="$1"
+    GetPADDValue "version.${_comp}.local.branch" _comp_branch
 
-    if [ "${_branch}" = "master" ]; then
+    if [ "${_comp_branch}" = "master" ]; then
         GetPADDValue "version.${_comp}.local.version" _ver_raw
         CleanVersion "${_ver_raw}" _ver_clean
         GetPADDValue "version.${_comp}.remote.version" _remote_ver
         CompareMasterVersion "${_ver_clean}" "${_remote_ver}" _out_heat
         _out_ver="${_ver_clean}"
-    elif [ -z "${_branch}" ]; then
+        _out_ultra="${_ver_clean}"
+    elif [ -z "${_comp_branch}" ]; then
         _out_heat="${red_text}"
         _out_ver="?"
+        _out_ultra="?"
     else
         GetPADDValue "version.${_comp}.local.hash" _local_hash
         GetPADDValue "version.${_comp}.remote.hash" _remote_hash
@@ -1152,17 +1126,29 @@ ResolveComponentVersion() {
             _out_heat="${red_text}"
         fi
 
-        ShortenBranch "${_branch}" _out_ver
+        ShortenBranch "${_comp_branch}" _out_ver
+
+        _short_branch="${_comp_branch}"
+        while [ "${#_short_branch}" -gt 3 ]; do
+            _short_branch="${_short_branch%?}"
+        done
+        if [ -n "${_local_hash}" ] && [ "${_local_hash}" != "null" ]; then
+            _short_hash="${_local_hash}"
+            while [ "${#_short_hash}" -gt 8 ]; do
+                _short_hash="${_short_hash%?}"
+            done
+            _out_ultra="${_short_branch}@${_short_hash}"
+        else
+            _out_ultra="${_short_branch}"
+        fi
     fi
 
     # shellcheck disable=SC2034
-    eval "$2=\${_out_ver}; $3=\${_out_heat}"
+    eval "$2=\${_out_ver}; $3=\${_out_heat}; $4=\${_out_ultra}"
 }
 
 GetVersionInformation() {
-    local docker_version_converted docker_version_latest_converted GITHUB_DOCKER_VERSION
-    local CORE_BRANCH CORE_HASH FTL_BRANCH FTL_HASH WEB_BRANCH WEB_HASH
-    local ultra_core ultra_web ultra_ftl
+    local GITHUB_DOCKER_VERSION ultra_core ultra_web ultra_ftl
 
     if [ "${connection_down_flag}" = true ]; then
         DOCKER_VERSION=null
@@ -1185,53 +1171,27 @@ GetVersionInformation() {
     # If PADD is running inside docker, immediately return without checking for updated component versions
     if [ "${DOCKER_VERSION}" != "null" ] ; then
         GetPADDValue version.docker.remote GITHUB_DOCKER_VERSION
-        VersionConverter "${DOCKER_VERSION}" docker_version_converted
-        VersionConverter "${GITHUB_DOCKER_VERSION}" docker_version_latest_converted
-
         # Note: the version comparison will fail for any Docker tag not following a 'YYYY.MM.VV' scheme
         #       e.g. 'nightly', 'beta', 'v6-pre-alpha' and might set a false out_of_date_flag
         #       As those versions are not meant to be used in production, we ignore this small bug
-        if [ "${docker_version_converted}" -lt "${docker_version_latest_converted}" ]; then
-            out_of_date_flag="true"
-            docker_version_heatmap=${red_text}
-        else
-            docker_version_heatmap=${green_text}
-        fi
-
+        CompareMasterVersion "${DOCKER_VERSION}" "${GITHUB_DOCKER_VERSION}" docker_version_heatmap
         ultra_version_info="Docker ${docker_version_heatmap}${DOCKER_VERSION}${reset_text}"
         return
     fi
 
     # Core & FTL are always present in Pi-hole FTL setups
-    ResolveComponentVersion "core" CORE_VERSION core_version_heatmap
-    ResolveComponentVersion "ftl" FTL_VERSION ftl_version_heatmap
+    ResolveComponentVersion "core" CORE_VERSION core_version_heatmap ultra_core
+    ResolveComponentVersion "ftl" FTL_VERSION ftl_version_heatmap ultra_ftl
 
     # Web interface is optional (null when not installed)
     GetPADDValue version.web.local.version WEB_VERSION
     if [ "${WEB_VERSION}" != "null" ]; then
-        ResolveComponentVersion "web" WEB_VERSION web_version_heatmap
+        ResolveComponentVersion "web" WEB_VERSION web_version_heatmap ultra_web
     else
         WEB_VERSION="N/A"
         web_version_heatmap=${yellow_text}
-    fi
-
-    # Read branches/hashes needed by ultra_version_info without re-querying if already set
-    GetPADDValue version.core.local.branch CORE_BRANCH
-    GetPADDValue version.core.local.hash CORE_HASH
-    GetPADDValue version.ftl.local.branch FTL_BRANCH
-    GetPADDValue version.ftl.local.hash FTL_HASH
-    if [ "${WEB_VERSION}" != "N/A" ]; then
-        GetPADDValue version.web.local.branch WEB_BRANCH
-        GetPADDValue version.web.local.hash WEB_HASH
-    fi
-
-    FormatUltraComponentVersion "${CORE_BRANCH}" "${CORE_VERSION}" "${CORE_BRANCH}" "${CORE_HASH}" ultra_core
-    if [ "${WEB_VERSION}" = "N/A" ]; then
         ultra_web="N/A"
-    else
-        FormatUltraComponentVersion "${WEB_BRANCH}" "${WEB_VERSION}" "${WEB_BRANCH}" "${WEB_HASH}" ultra_web
     fi
-    FormatUltraComponentVersion "${FTL_BRANCH}" "${FTL_VERSION}" "${FTL_BRANCH}" "${FTL_HASH}" ultra_ftl
 
     ultra_version_info="Pi-hole® ${core_version_heatmap}${ultra_core}${reset_text}, Web ${web_version_heatmap}${ultra_web}${reset_text}, FTL ${ftl_version_heatmap}${ultra_ftl}${reset_text}"
 }
