@@ -629,11 +629,6 @@ GetSummaryInformation() {
         fi
     fi
 
-    nl='
-'
-    dns_query_rate_label=${freq_parsed%%"${nl}"*}
-    dns_queries_frequency=${freq_parsed#*"${nl}"}
-
     # Substitute values returned by FTL for privacy level >= 1 / >= 2
     if [ "${privacy_level}" -ge 1 ]; then
         top_domain_raw="hidden by privacy level"
@@ -646,7 +641,7 @@ GetSummaryInformation() {
 }
 
 GetSystemInformation() {
-    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius temp_conv hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw memory_used_raw memory_total_raw swap_percent_raw mem_used_fmt mem_total_fmt
+    local cpu_temp_raw cpu_temp temp_unit cpu_temp_celsius t_sign t_int t_frac t10 hot_limit core_count cpu_load_1_raw cpu_load_5_raw cpu_load_15_raw cpu_percent_raw memory_percent_raw memory_used_raw memory_total_raw swap_percent_raw mem_used_fmt mem_total_fmt
     if [ "${connection_down_flag}" = true ]; then
         system_uptime_raw=0
         temperature="N/A"
